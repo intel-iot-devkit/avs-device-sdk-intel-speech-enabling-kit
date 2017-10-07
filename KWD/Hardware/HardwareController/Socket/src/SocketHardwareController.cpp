@@ -63,7 +63,7 @@ std::unique_ptr<KeywordDetection> SocketHardwareController::read(
     }
 
     char buff[MAX_MSG_LEN];
-    memset(buff, '0', sizeof(buff));
+    memset(buff, '\0', sizeof(buff));
     int len = recv(m_sockFd, buff, sizeof(buff) - 1, 0);
 
     if(len < 0) {
@@ -93,6 +93,11 @@ bool SocketHardwareController::init() {
     server = gethostbyname(m_host.c_str());
     if(server == NULL) {
         ACSDK_ERROR(LX("initFailed").d("reason", "getHostFailed"));
+        return false;
+    }
+
+    if((m_sockFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        ACSDK_ERROR(LX("initFailed").d("reason", "createSocketFailed"));
         return false;
     }
 
