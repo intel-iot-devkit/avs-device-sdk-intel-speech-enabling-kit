@@ -25,7 +25,7 @@ public:
      * @param port Port on the host to connect on
      * @return @c SocketHardwareController, nullptr if an error occurs
      */
-    static std::unique_ptr<SocketHardwareController> create(std::string host, int port);
+    static std::shared_ptr<SocketHardwareController> create(std::string host, int port);
 
     /**
      * Read a @c KeywordDetection from the hardware controller.

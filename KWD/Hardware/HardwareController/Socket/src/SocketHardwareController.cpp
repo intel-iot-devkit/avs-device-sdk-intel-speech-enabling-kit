@@ -25,11 +25,11 @@ static const std::string TAG("SocketHardwareController");
 #define LX(event) alexaClientSDK::avsCommon::utils::logger::LogEntry(TAG, event)
 #define MAX_MSG_LEN 512
 
-std::unique_ptr<SocketHardwareController> SocketHardwareController::create(
+std::shared_ptr<SocketHardwareController> SocketHardwareController::create(
         std::string host, int port)
 {
-    std::unique_ptr<SocketHardwareController> ctrl = std::unique_ptr<SocketHardwareController>(
-            new SocketHardwareController(host, port));
+    std::shared_ptr<SocketHardwareController> ctrl = std::make_shared<SocketHardwareController>(
+            SocketHardwareController(host, port));
 
     if(!ctrl->init()) {
         ACSDK_ERROR(LX("createFailed").d("reason", "initHardwareControllerFailed"));

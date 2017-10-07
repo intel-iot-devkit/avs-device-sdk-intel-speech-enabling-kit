@@ -1,7 +1,5 @@
 /**
  * HardwareKeywordDetector.h
- * 
- * @author Kevin Midkiff (kevin.midkiff@intel.com)
  *
  * TODO: Add Intel copywrite
  *
@@ -20,6 +18,8 @@
 #include <AVSCommon/SDKInterfaces/KeyWordDetectorStateObserverInterface.h>
 
 #include "KWD/AbstractKeywordDetector.h"
+#include "Hardware/KeywordDetection.h"
+#include "HardwareController/AbstractHardwareController.h"
 
 namespace alexaClientSDK {
 namespace kwd {
@@ -46,15 +46,27 @@ public:
 
     /**
      * Creates a @c HardwareKeywordDetector.
+     *
+     * @param stream The stream of audio data. This should be formatted in 
+     * LPCM encoded with 16 bits per sample and have a sample rate of 16 kHz. 
+     * Additionally, the data should be in little endian format.
+     * @param audioFormat The format of the audio data located within the stream.
+     * @param controller Handle to the hardware controller for receiving events
+     * for when the keyword has been detected
+     * @param keyWordObservers The observers to notify of keyword detections.
+     * @param keyWordDetectorStateObservers The observers to notify of state 
+     * changes in the engine.
+     * @param timeout Timeout for checking if the thread needs to stop
      * @return A new @c HardwareKeywordDetector, or @c nullptr if the operation 
      * failed
      */
     static std::unique_ptr<HardwareKeywordDetector> create(
         std::shared_ptr<AudioInputStream> stream,
-        avsCommon::utils::AudioFormat audioFormat,
+        AudioFormat audioFormat,
+        std::shared_ptr<AbstractHardwareController> controller,
         SetKeyWordObserverInterface keyWordObservers,
         SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-        std::chrono::milliseconds msToPushPerIteration = std::chrono::milliseconds(20));
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(250));
     
     /**
      * Destructor.
@@ -64,37 +76,33 @@ private:
     /**
      * Constructor.
      *
-     * @param stream The stream of audio data. This should be formatted in LPCM
-     * encoded with 16 bits per sample and have a sample rate of 16 kHz. 
+     * @param stream The stream of audio data. This should be formatted in 
+     * LPCM encoded with 16 bits per sample and have a sample rate of 16 kHz. 
      * Additionally, the data should be in little endian format.
-     * @param audioFormat The format of the audio data located within the stream.
+     * @param controller Handle to the hardware controller for receiving events
+     * for when the keyword has been detected
      * @param keyWordObservers The observers to notify of keyword detections.
      * @param keyWordDetectorStateObservers The observers to notify of state 
      * changes in the engine.
-     * @return A new @c HardwareKeywordDetector, or @c nullptr if the operation failed
+     * @param timeout Timeout for checking if the thread needs to stop
      */
     HardwareKeywordDetector(
         std::shared_ptr<AudioInputStream> stream,
-        avsCommon::utils::AudioFormat audioFormat,
+        std::shared_ptr<AbstractHardwareController> controller,
         SetKeyWordObserverInterface keyWordObservers,
         SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-        std::chrono::milliseconds msToPushPerIteration);
+        std::chrono::milliseconds timeout);
 
     /**
-     * Initializes the stream reader and kicks off a thread to read data from
-     * the stream. This method should only be called once with each new @c
-     * HardwareKeywordDetector.
+     * Initializes the stream and kicks off a thread to poll the hardware for
+     * keyword detection events.
      *
-     * @param audioFormat The format of the audio data located within the stream
-     * @return @c true if the audio format is compatible, and @c false otherwise 
+     * @return @c true if the initialization was successful, @c false otherwise.
      */
-    bool init(AudioFormat audioFormat);
+    bool init(); 
 
     /// The main function that reads data off of the audio stream
     void detectionLoop();
-
-    /// Indicates whether the internal main loop should keep running.
-    std::atomic<bool> m_isShuttingDown;
 
     /// The stream of audio data.
     const std::shared_ptr<avsCommon::avs::AudioInputStream> m_stream;
@@ -102,19 +110,20 @@ private:
     /// The reader that will be used to read audio data from the stream.
     std::shared_ptr<avsCommon::avs::AudioInputStream::Reader> m_streamReader;
 
+    /// Handle to the hardware controller
+    std::shared_ptr<AbstractHardwareController> m_controller;
+
+    /// Timeout for polling the hardware for events
+    std::chrono::milliseconds m_timeout;
+
+    /// Indicates whether the internal main loop should keep running.
+    std::atomic<bool> m_isShuttingDown;
+
     /**
      * Internal thread that waits for a signal from the hardware that the
      * keyword has been detected.
      */
     std::thread m_detectionThread;
-
-    /**
-     * The max number of samples to push into the underlying engine per 
-     * iteration. This will be determined based on the sampling rate of the 
-     * audio data passed in.
-     */
-    // TODO: May not need this
-    const size_t m_maxSamplesPerPush;
 };
 
 } // namespace kwd

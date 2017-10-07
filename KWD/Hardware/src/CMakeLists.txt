@@ -3,6 +3,7 @@ add_library(HARDWARE SHARED HardwareKeywordDetector.cpp KeywordDetection.cpp)
 
 target_include_directories(HARDWARE PUBLIC
     "../include"
+    "../HardwareController/include"
     "${PORTAUDIO_INCLUDE_DIR}"
     "${KWD_SOURCE_DIR}/include")
 

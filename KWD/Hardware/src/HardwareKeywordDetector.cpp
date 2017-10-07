@@ -1,7 +1,5 @@
 /**
  * HardwareKeyWordDetector.cpp
- * 
- * @author Kevin Midkiff (kevin.midkiff@intel.com)
  *
  * TODO: Add Intel copywrite
  */
@@ -28,42 +26,45 @@ static const std::string TAG("HardwareKeywordDetector");
  */
 #define LX(event) alexaClientSDK::avsCommon::utils::logger::LogEntry(TAG, event)
 
-/// The number of hertz per kilohertz.
-static const size_t HERTZ_PER_KILOHERTZ = 1000;
-
-/// The timeout to use for read calls to the SharedDataStream.
-const std::chrono::milliseconds TIMEOUT_FOR_READ_CALLS = std::chrono::milliseconds(1000);
-
 std::unique_ptr<HardwareKeywordDetector> HardwareKeywordDetector::create(
     std::shared_ptr<AudioInputStream> stream,
-    avsCommon::utils::AudioFormat audioFormat,
+    AudioFormat audioFormat,
+    std::shared_ptr<AbstractHardwareController> controller,
     SetKeyWordObserverInterface keyWordObservers,
     SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-    std::chrono::milliseconds msToPushPerIteration)
+    std::chrono::milliseconds timeout)
 {
-    // Verify that the given audio stream is not NULL
-    if(!stream) {
+    // Verify that the given stream is not NULL
+    if (!stream) {
         ACSDK_ERROR(LX("createFailed").d("reason", "nullStream"));
         return nullptr;
     }
 
+    // Verify that the given audio stream is not NULL
+    if(!controller) {
+        ACSDK_ERROR(LX("createFailed").d("reason", "nullHwController"));
+        return nullptr;
+    }
 
     // TODO: ACSDK-249 - Investigate cpu usage of converting bytes between 
     // endianness and if it's not too much, do it.
-    if(isByteswappingRequired(audioFormat)) {
+    if (isByteswappingRequired(audioFormat)) {
         ACSDK_ERROR(LX("createFailed").d("reason", "endianMismatch"));
         return nullptr;
     }
-    
+
     // Initialize the detector, and return it
     std::unique_ptr<HardwareKeywordDetector> detector(
             new HardwareKeywordDetector(
-                stream, audioFormat, keyWordObservers,
-                keyWordDetectorStateObservers, msToPushPerIteration));
-    if (!detector->init(audioFormat)) {
+                stream, controller, keyWordObservers,
+                keyWordDetectorStateObservers, 
+                timeout));
+
+    if(!detector->init()) {
         ACSDK_ERROR(LX("createFailed").d("reason", "initDetectorFailed"));
         return nullptr;
     }
+
     return detector;
 }
 
@@ -74,22 +75,20 @@ HardwareKeywordDetector::~HardwareKeywordDetector() {
     }
 }
 
-
 HardwareKeywordDetector::HardwareKeywordDetector(
     std::shared_ptr<AudioInputStream> stream,
-    avsCommon::utils::AudioFormat audioFormat,
+    std::shared_ptr<AbstractHardwareController> controller,
     SetKeyWordObserverInterface keyWordObservers,
     SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-    std::chrono::milliseconds msToPushPerIteration) :
+    std::chrono::milliseconds timeout) :
         AbstractKeywordDetector(keyWordObservers, keyWordDetectorStateObservers),
-        m_stream{stream},
-        m_maxSamplesPerPush{(audioFormat.sampleRateHz / HERTZ_PER_KILOHERTZ) * msToPushPerIteration.count()}
+        m_stream{stream}, m_controller{controller}, m_timeout(timeout)
 { }
 
-bool HardwareKeywordDetector::init(AudioFormat audioFormat) {
-    // Get a stream reader from the given audio stream
+bool HardwareKeywordDetector::init() {
     m_streamReader = m_stream->createReader(AudioInputStream::Reader::Policy::BLOCKING);
-    if(!m_streamReader) {
+
+    if (!m_streamReader) {
         ACSDK_ERROR(LX("initFailed").d("reason", "createStreamReaderFailed"));
         return false;
     }
@@ -97,7 +96,6 @@ bool HardwareKeywordDetector::init(AudioFormat audioFormat) {
     m_isShuttingDown = false;
     m_detectionThread = std::thread(&HardwareKeywordDetector::detectionLoop, this);
     return true;
-    
 }
 
 void HardwareKeywordDetector::detectionLoop() {
@@ -106,9 +104,20 @@ void HardwareKeywordDetector::detectionLoop() {
         KeyWordDetectorStateObserverInterface::KeyWordDetectorState::ACTIVE);
     // int16_t audioDataToPush[m_maxSamplesPerPush];
     // ssize_t wordsRead;
+    std::unique_ptr<KeywordDetection> detection;
     
     while(!m_isShuttingDown) {
-        // TODO: Read from stream and parse
+        detection = m_controller->read(m_timeout);
+
+        // If detection if @c nullptr, then a timeout occurred
+        if(!detection) {
+            continue;
+        }
+
+        notifyKeyWordObservers(
+                m_stream, detection->getKeyword(),
+                KeyWordObserverInterface::UNSPECIFIED_INDEX,
+                m_streamReader->tell());
     }
 
     m_streamReader->close();
