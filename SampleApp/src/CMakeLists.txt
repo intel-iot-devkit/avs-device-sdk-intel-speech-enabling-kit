@@ -32,6 +32,9 @@ endif()
 
 if(HARDWARE_KEY_WORD_DETECTOR)
     target_link_libraries(SampleApp HARDWARE)
+    if(SOCKET_HARDWARE_CONTROLLER)
+        target_link_libraries(SampleApp SOCKET)
+    endif()
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

@@ -23,6 +23,12 @@
 #include <KittAi/KittAiKeyWordDetector.h>
 #elif KWD_SENSORY
 #include <Sensory/SensoryKeywordDetector.h>
+#elif KWD_HARDWARE
+#if defined(SOCKET_HARDWARE_CONTROLLER)
+#include <Socket/SocketHardwareController.h>
+#endif
+#include <HardwareController/AbstractHardwareController.h>
+#include <Hardware/HardwareKeywordDetector.h>
 #endif
 #include <ACL/Transport/HTTPContentFetcherFactory.h>
 #include <Alerts/Storage/SQLiteAlertStorage.h>
@@ -358,6 +364,24 @@ bool SampleApplication::initialize(
         pathToInputFolder + "/spot-alexa-rpi-31000.snsr");
     if (!m_keywordDetector) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create SensoryKeywWordDetector!");
+        return false;
+    }
+#elif defined(KWD_HARDWARE)
+    std::shared_ptr<kwd::AbstractHardwareController> controller = nullptr;
+
+#if defined(SOCKET_HARDWARE_CONTROLLER)
+    controller = kwd::SocketHardwareController::create("localhost", 3000);
+#endif
+
+    m_keywordDetector = kwd::HardwareKeywordDetector::create(
+        sharedDataStream, 
+        compatibleAudioFormat, 
+        controller, 
+        {keywordObserver},
+        std::unordered_set<std::shared_ptr<
+            alexaClientSDK::avsCommon::sdkInterfaces::KeyWordDetectorStateObserverInterface>>());
+    if(!m_keywordDetector) {
+        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create HardwareKeywordDetector!");
         return false;
     }
 #endif
