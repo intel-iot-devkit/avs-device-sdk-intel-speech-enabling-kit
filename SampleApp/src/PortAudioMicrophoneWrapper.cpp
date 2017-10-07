@@ -54,6 +54,7 @@ PortAudioMicrophoneWrapper::~PortAudioMicrophoneWrapper() {
 }
 
 bool PortAudioMicrophoneWrapper::initialize() {
+    m_streaming = false;
     m_writer = m_audioInputStream->createWriter(AudioInputStream::Writer::Policy::NONBLOCKABLE);
     if (!m_writer) {
         ConsolePrinter::simplePrint("Failed to create stream writer");
@@ -78,6 +79,7 @@ bool PortAudioMicrophoneWrapper::initialize() {
         ConsolePrinter::simplePrint("Failed to open PortAudio default stream");
         return false;
     }
+    m_streaming = true;
     return true;
 }
 
@@ -88,6 +90,7 @@ bool PortAudioMicrophoneWrapper::startStreamingMicrophoneData() {
         ConsolePrinter::simplePrint("Failed to start PortAudio stream");
         return false;
     }
+    m_streaming = true;
     return true;
 }
 
@@ -98,6 +101,7 @@ bool PortAudioMicrophoneWrapper::stopStreamingMicrophoneData() {
         ConsolePrinter::simplePrint("Failed to stop PortAudio stream");
         return false;
     }
+    m_streaming = false;
     return true;
 }
 
@@ -115,6 +119,10 @@ int PortAudioMicrophoneWrapper::PortAudioCallback(
         return paAbort;
     }
     return paContinue;
+}
+
+bool PortAudioMicrophoneWrapper::isStreaming() {
+    return m_streaming;
 }
 
 }  // namespace sampleApp

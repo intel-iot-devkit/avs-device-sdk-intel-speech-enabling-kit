@@ -18,13 +18,14 @@
 #include "SampleApp/KeywordObserver.h"
 #include "SampleApp/ConnectionObserver.h"
 #include "SampleApp/SampleApplication.h"
+#include "SampleApp/StartPortAudioStreamObserver.h"
 
 #ifdef KWD_KITTAI
 #include <KittAi/KittAiKeyWordDetector.h>
 #elif KWD_SENSORY
 #include <Sensory/SensoryKeywordDetector.h>
 #elif KWD_HARDWARE
-#if defined(SOCKET_HARDWARE_CONTROLLER)
+#if defined(SOCK_HW_CTRL)
 #include <Socket/SocketHardwareController.h>
 #endif
 #include <HardwareController/AbstractHardwareController.h>
@@ -110,6 +111,8 @@ static alexaClientSDK::avsCommon::utils::logger::Level getLogLevelFromUserInput(
  * which keeps a reference to it for the lifetime of the logging system.  If the logging system is refactoroed to
  * use shared_ptrs (ACSDK-445), the ConsolePrinter can be instantiated as shared_ptr class member and passed to
  * LoggerSinkManager.
+ *private:
+
  */
 static alexaClientSDK::sampleApp::ConsolePrinter g_consolePrinter;
 
@@ -369,8 +372,8 @@ bool SampleApplication::initialize(
 #elif defined(KWD_HARDWARE)
     std::shared_ptr<kwd::AbstractHardwareController> controller = nullptr;
 
-#if defined(SOCKET_HARDWARE_CONTROLLER)
-    controller = kwd::SocketHardwareController::create("localhost", 3000);
+#if defined(SOCK_HW_CTRL)
+    controller = kwd::SocketHardwareController::create("localhost", 5000);
 #endif
 
     m_keywordDetector = kwd::HardwareKeywordDetector::create(
@@ -384,6 +387,14 @@ bool SampleApplication::initialize(
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create HardwareKeywordDetector!");
         return false;
     }
+
+    auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
+    if(!startMicObserver) {
+        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create StartPortAudioStreamObserver!");
+        return false;
+    }
+
+    m_keywordDetector->addKeyWordObserver(startMicObserver);
 #endif
 
     // If wake word is enabled, then creating the interaction manager with a wake word audio provider.
@@ -399,7 +410,15 @@ bool SampleApplication::initialize(
     // If wake word is not enabled, then creating the interaction manager without a wake word audio provider.
     auto interactionManager = std::make_shared<alexaClientSDK::sampleApp::InteractionManager>(
         client, micWrapper, userInterfaceManager, holdToTalkAudioProvider, tapToTalkAudioProvider);
+
 #endif
+
+#ifdef KWD_HARDWARE
+    // Stopping the audio stream, which is started by the interaction manager by
+    // default. The hardware KWD needs this to be muted initially.
+    interactionManager->microphoneToggle();
+#endif
+
 
     // Creating the input observer.
     m_userInputManager = alexaClientSDK::sampleApp::UserInputManager::create(interactionManager);
