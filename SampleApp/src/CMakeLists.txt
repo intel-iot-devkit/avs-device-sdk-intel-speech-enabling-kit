@@ -30,6 +30,10 @@ if(SENSORY_KEY_WORD_DETECTOR)
     target_link_libraries(SampleApp SENSORY)
 endif()
 
+if(HARDWARE_KEY_WORD_DETECTOR)
+    target_link_libraries(SampleApp HARDWARE)
+endif()
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(SampleApp
         "-framework CoreAudio" 
