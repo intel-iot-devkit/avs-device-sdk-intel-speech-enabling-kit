@@ -102,8 +102,6 @@ void HardwareKeywordDetector::detectionLoop() {
     // Notify the state observers, abd set to ACTIVE
     notifyKeyWordDetectorStateObservers(
         KeyWordDetectorStateObserverInterface::KeyWordDetectorState::ACTIVE);
-    // int16_t audioDataToPush[m_maxSamplesPerPush];
-    // ssize_t wordsRead;
     std::unique_ptr<KeywordDetection> detection;
     
     while(!m_isShuttingDown) {
