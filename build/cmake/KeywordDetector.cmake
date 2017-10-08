@@ -62,11 +62,19 @@ endif()
 
 if(HARDWARE_KEY_WORD_DETECTOR)
     message("Creating ${PROJECT_NAME} with keyword detector type: Hardware")
-    if(NOT SOCKET_HARDWARE_CONTROLLER)
+
+    if(NOT SOCKET_HARDWARE_CONTROLLER AND NOT ALSA_HARDWARE_CONTROLLER)
         message(FATAL_ERROR "Must defined a hardware controller to use")
-    else()
+    endif()
+
+    if(SOCKET_HARDWARE_CONTROLLER)
         add_definitions(-DSOCK_HW_CTRL)
     endif()
+
+    if(ALSA_HARDWARE_CONTROLLER)
+        add_definitions(-DALSA_HW_CTRL)
+    endif()
+
     add_definitions(-DKWD)
     add_definitions(-DKWD_HARDWARE)
 endif()

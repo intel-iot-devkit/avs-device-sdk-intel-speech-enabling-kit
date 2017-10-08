@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <AVSCommon/Utils/Logger/Logger.h>
@@ -110,6 +111,9 @@ bool SocketHardwareController::init() {
         ACSDK_ERROR(LX("initFailed").d("reason", "socketConnectFailed"));
         return false;
     }
+
+    // Freeing server
+    free(server); 
 
     return true;    
 }

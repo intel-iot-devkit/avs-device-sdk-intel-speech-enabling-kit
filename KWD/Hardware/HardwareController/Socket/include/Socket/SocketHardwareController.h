@@ -40,6 +40,7 @@ public:
      * Destructor.
      */
     ~SocketHardwareController();
+
 private:
     /**
      * Constructor.
