@@ -81,7 +81,9 @@ AlsaHardwareController::AlsaHardwareController(std::string name, std::string key
 AlsaHardwareController::~AlsaHardwareController() {
     // Note: snd_ctl_close both closes the connection and frees all of its
     // allocated resources (see ALSA docs for more info)
-    snd_ctl_close(m_ctl);
+    if(m_ctl != NULL) {
+        snd_ctl_close(m_ctl);
+    }
 }
 
 bool AlsaHardwareController::init() {
