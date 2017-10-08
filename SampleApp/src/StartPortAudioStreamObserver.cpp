@@ -6,13 +6,10 @@
 
 #include <AVSCommon/Utils/Logger/Logger.h>
 
-#include "SampleApp/ConsolePrinter.h"
 #include "SampleApp/StartPortAudioStreamObserver.h"
 
 namespace alexaClientSDK {
 namespace sampleApp {
-
-using namespace avsCommon::utils;
 
 // Logging tag
 static const std::string TAG("StartPortAudioStreamObserver");
@@ -42,7 +39,6 @@ void StartPortAudioStreamObserver::onKeyWordDetected(
         AudioInputStream::Index begin,
         AudioInputStream::Index end)
 {
-    alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Received keyword notification");
     if(!m_micWrapper->isStreaming()) {
         if(!m_micWrapper->startStreamingMicrophoneData()) {
             ACSDK_ERROR(LX("onKeyWordDetectedFailed").d("reason", "startStreamFailed"));

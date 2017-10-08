@@ -17,10 +17,8 @@
 namespace alexaClientSDK {
 namespace sampleApp {
     
-using namespace avsCommon;
 using namespace avsCommon::avs;
 using namespace avsCommon::sdkInterfaces;
-using namespace avsCommon::utils;
 
 /**
  * Keyword observer to start the PA stream on a notification from the 
