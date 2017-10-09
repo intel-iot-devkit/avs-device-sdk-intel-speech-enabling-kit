@@ -431,7 +431,8 @@ bool SampleApplication::initialize(
 #ifdef KWD_HARDWARE
     // Stopping the audio stream, which is started by the interaction manager by
     // default. The hardware KWD needs this to be muted initially.
-    interactionManager->microphoneToggle();
+    // interactionManager->microphoneToggle();
+    micWrapper->stopStreamingMicrophoneData();
 #endif
 
 

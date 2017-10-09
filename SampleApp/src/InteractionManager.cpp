@@ -71,12 +71,10 @@ void InteractionManager::microphoneToggle() {
         if (!m_wakeWordAudioProvider) {
             return;
         }
-        if (m_isMicOn) {
-            m_isMicOn = false;
+        if (m_micWrapper->isStreaming()) {
             m_micWrapper->stopStreamingMicrophoneData();
             m_userInterface->microphoneOff();
         } else {
-            m_isMicOn = true;
             m_micWrapper->startStreamingMicrophoneData();
             m_userInterface->microphoneOn();
         }
@@ -85,7 +83,7 @@ void InteractionManager::microphoneToggle() {
 
 void InteractionManager::holdToggled() {
     m_executor.submit([this]() {
-        if (!m_isMicOn) {
+        if (!m_micWrapper->isStreaming()) {
             return;
         }
         if (!m_isHoldOccurring) {
@@ -101,7 +99,7 @@ void InteractionManager::holdToggled() {
 
 void InteractionManager::tap() {
     m_executor.submit([this]() {
-        if (!m_isMicOn) {
+        if (!m_micWrapper->isStreaming()) {
             return;
         }
         if (m_client->notifyOfTapToTalk(m_tapToTalkAudioProvider).get()) {
