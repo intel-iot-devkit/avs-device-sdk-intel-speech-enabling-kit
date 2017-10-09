@@ -17,6 +17,7 @@
 
 #include "SampleApp/KeywordObserver.h"
 #include "SampleApp/ConnectionObserver.h"
+#include "SampleApp/AipObserver.h"
 #include "SampleApp/SampleApplication.h"
 #include "SampleApp/StartPortAudioStreamObserver.h"
 #include "SampleApp/StopPortAudioStreamObserver.h"
@@ -127,6 +128,8 @@ std::unique_ptr<SampleApplication> SampleApplication::create(
     if (!clientApplication->initialize(pathToConfig, pathToInputFolder, logLevel)) {
         ConsolePrinter::simplePrint("Failed to initialize SampleApplication");
         return nullptr;
+    } else {
+        ConsolePrinter::simplePrint("SampleApplication initialized successfully");
     }
     return clientApplication;
 }
@@ -264,6 +267,8 @@ bool SampleApplication::initialize(
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to connect to AVS!");
         return false;
     }
+
+    client->addObserver(AipObserver::create());
     // Add userInterfaceManager as observer of locale setting.
     client->addSettingObserver("locale", userInterfaceManager);
     // Send default settings set by the user to AVS.
@@ -331,7 +336,11 @@ bool SampleApplication::initialize(
 // Creating wake word audio provider, if necessary
 #ifdef KWD
     bool wakeAlwaysReadable = true;
+#ifdef KWD_HARDWARE
+    bool wakeCanOverride = true;
+#else
     bool wakeCanOverride = false;
+#endif
     bool wakeCanBeOverridden = true;
 
     alexaClientSDK::capabilityAgents::aip::AudioProvider wakeWordAudioProvider(
@@ -378,25 +387,24 @@ bool SampleApplication::initialize(
 #if defined(SOCK_HW_CTRL)
     controller = kwd::SocketHardwareController::create("localhost", 5000);
 #elif defined(ALSA_HW_CTRL)
-    controller = kwd::AlsaHardwareController::create("hw:0", "Alexa");
+    controller = kwd::AlsaHardwareController::create("hw:1", "Alexa");
 #endif
+    auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
+    if(!startMicObserver) {
+        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
+                "Failed to create StartPortAudioStreamObserver!");
+        return false;
+    }
 
     m_keywordDetector = kwd::HardwareKeywordDetector::create(
         sharedDataStream, 
         compatibleAudioFormat, 
         controller, 
-        {keywordObserver},
+        {startMicObserver, keywordObserver},
         std::unordered_set<std::shared_ptr<
             alexaClientSDK::avsCommon::sdkInterfaces::KeyWordDetectorStateObserverInterface>>());
     if(!m_keywordDetector) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create HardwareKeywordDetector!");
-        return false;
-    }
-
-    auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
-    if(!startMicObserver) {
-        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-                "Failed to create StartPortAudioStreamObserver!");
         return false;
     }
 
@@ -431,10 +439,8 @@ bool SampleApplication::initialize(
 #ifdef KWD_HARDWARE
     // Stopping the audio stream, which is started by the interaction manager by
     // default. The hardware KWD needs this to be muted initially.
-    // interactionManager->microphoneToggle();
     micWrapper->stopStreamingMicrophoneData();
 #endif
-
 
     // Creating the input observer.
     m_userInputManager = alexaClientSDK::sampleApp::UserInputManager::create(interactionManager);

@@ -79,7 +79,7 @@ bool PortAudioMicrophoneWrapper::initialize() {
         ConsolePrinter::simplePrint("Failed to open PortAudio default stream");
         return false;
     }
-    m_streaming = true;
+    // m_streaming = true;
     return true;
 }
 
@@ -96,6 +96,8 @@ bool PortAudioMicrophoneWrapper::startStreamingMicrophoneData() {
 
 bool PortAudioMicrophoneWrapper::stopStreamingMicrophoneData() {
     std::lock_guard<std::mutex> lock{m_mutex};
+    if(!m_streaming)
+        return true;
     PaError err = Pa_StopStream(m_paStream);
     if (err != paNoError) {
         ConsolePrinter::simplePrint("Failed to stop PortAudio stream");

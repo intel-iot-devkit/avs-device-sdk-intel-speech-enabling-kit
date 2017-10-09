@@ -36,7 +36,7 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     snd_ctl_poll_descriptors(m_ctl, &fds[0], 1);
 
     int ret = poll(fds, 1, timeout.count());
-
+    
     if(ret == 0) {
         // 0 indicates a timeout
         return nullptr;
@@ -44,6 +44,15 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
         // < 0 indicates an error occurred
         ACSDK_ERROR(LX("readFailed")
                 .d("reason", "pollFailed")
+                .d("error_code", std::to_string(ret)));
+        return nullptr;
+    }
+
+    snd_ctl_event_t* event;
+    snd_ctl_event_alloca(&event);
+    if(snd_ctl_read(m_ctl, event) < 0) {
+        ACSDK_ERROR(LX("readFailed")
+                .d("reason", "sndReadFailed")
                 .d("error_code", std::to_string(ret)));
         return nullptr;
     }
@@ -69,7 +78,8 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     auto detection = KeywordDetection::create(payload[0], payload[1], m_keyword);
 
     // Freeing control elem value
-    snd_ctl_elem_value_free(control);
+    if(control != NULL)
+        snd_ctl_elem_value_free(control);
 
     return detection;
 }

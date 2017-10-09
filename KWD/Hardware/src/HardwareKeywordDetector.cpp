@@ -112,10 +112,17 @@ void HardwareKeywordDetector::detectionLoop() {
             continue;
         }
 
-        notifyKeyWordObservers(
-                m_stream, detection->getKeyword(),
-                KeyWordObserverInterface::UNSPECIFIED_INDEX,
-                m_streamReader->tell());
+        if(detection->getBegin() < 0 && detection->getEnd() < 0) {
+            notifyKeyWordObservers(
+                    m_stream, detection->getKeyword(),
+                    KeyWordObserverInterface::UNSPECIFIED_INDEX,
+                    m_streamReader->tell());
+        } else {
+            notifyKeyWordObservers(
+                    m_stream, detection->getKeyword(),
+                    detection->getBegin(),
+                    detection->getEnd());
+        }
     }
 
     m_streamReader->close();
