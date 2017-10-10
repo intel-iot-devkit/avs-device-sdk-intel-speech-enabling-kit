@@ -327,7 +327,7 @@ bool SampleApplication::initialize(
         holdCanBeOverridden);
 
     std::shared_ptr<alexaClientSDK::sampleApp::PortAudioMicrophoneWrapper> micWrapper =
-        alexaClientSDK::sampleApp::PortAudioMicrophoneWrapper::create(sharedDataStream);
+        alexaClientSDK::sampleApp::PortAudioMicrophoneWrapper::create(buffer, sharedDataStream);
     if (!micWrapper) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create PortAudioMicrophoneWrapper!");
         return false;
@@ -419,6 +419,11 @@ bool SampleApplication::initialize(
 
     client->addAlexaDialogStateObserver(stopMicObserver);
 #endif
+#ifdef KWD_HARDWARE
+    bool startPaStream = false;
+#else
+    bool startPaStream = true;
+#endif
 
     // If wake word is enabled, then creating the interaction manager with a wake word audio provider.
     auto interactionManager = std::make_shared<alexaClientSDK::sampleApp::InteractionManager>(
@@ -427,19 +432,14 @@ bool SampleApplication::initialize(
         userInterfaceManager,
         holdToTalkAudioProvider,
         tapToTalkAudioProvider,
-        wakeWordAudioProvider);
+        wakeWordAudioProvider,
+        startPaStream);
 
 #else
     // If wake word is not enabled, then creating the interaction manager without a wake word audio provider.
     auto interactionManager = std::make_shared<alexaClientSDK::sampleApp::InteractionManager>(
         client, micWrapper, userInterfaceManager, holdToTalkAudioProvider, tapToTalkAudioProvider);
 
-#endif
-
-#ifdef KWD_HARDWARE
-    // Stopping the audio stream, which is started by the interaction manager by
-    // default. The hardware KWD needs this to be muted initially.
-    micWrapper->stopStreamingMicrophoneData();
 #endif
 
     // Creating the input observer.

@@ -26,7 +26,8 @@ InteractionManager::InteractionManager(
     std::shared_ptr<sampleApp::UIManager> userInterface,
     capabilityAgents::aip::AudioProvider holdToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
-    capabilityAgents::aip::AudioProvider wakeWordAudioProvider) :
+    capabilityAgents::aip::AudioProvider wakeWordAudioProvider,
+    bool startPaStream) :
         m_client{client},
         m_micWrapper{micWrapper},
         m_userInterface{userInterface},
@@ -34,10 +35,12 @@ InteractionManager::InteractionManager(
         m_tapToTalkAudioProvider{tapToTalkAudioProvider},
         m_wakeWordAudioProvider{wakeWordAudioProvider},
         m_isHoldOccurring{false},
-        m_isTapOccurring{false},
-        m_isMicOn{true} {
-    // m_micWrapper->startStreamingMicrophoneData();
-};
+        m_isTapOccurring{false} 
+{ 
+    if(startPaStream) {
+        m_micWrapper->startStreamingMicrophoneData();
+    }
+}
 
 void InteractionManager::begin() {
     m_executor.submit([this]() {

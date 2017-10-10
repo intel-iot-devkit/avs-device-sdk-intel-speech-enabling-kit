@@ -38,7 +38,7 @@ public:
      * @param stream The shared data stream to write to.
      * @return A unique_ptr to a @c PortAudioMicrophoneWrapper if creation was successful and @c nullptr otherwise.
      */
-    static std::unique_ptr<PortAudioMicrophoneWrapper> create(std::shared_ptr<avsCommon::avs::AudioInputStream> stream);
+    static std::unique_ptr<PortAudioMicrophoneWrapper> create(std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer, std::shared_ptr<avsCommon::avs::AudioInputStream> stream);
 
     /**
      * Stops streaming from the microphone.
@@ -72,7 +72,7 @@ private:
      *
      * @param stream The shared data stream to write to.
      */
-    PortAudioMicrophoneWrapper(std::shared_ptr<avsCommon::avs::AudioInputStream> stream);
+    PortAudioMicrophoneWrapper(std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer, std::shared_ptr<avsCommon::avs::AudioInputStream> stream);
 
     /**
      * The callback that PortAudio will issue when audio is avaiable to read.
@@ -95,6 +95,12 @@ private:
 
     /// Initializes PortAudio
     bool initialize();
+    
+    /// Open a default stream
+    bool openStream();
+    
+    /// Close the stream
+    bool closeStream();
 
     /// The stream of audio data.
     const std::shared_ptr<avsCommon::avs::AudioInputStream> m_audioInputStream;
@@ -113,6 +119,7 @@ private:
 
     /// Flag for if the audio stream is streaming or not
     std::atomic<bool> m_streaming;
+    std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> m_buffer;
 };
 
 }  // namespace sampleApp

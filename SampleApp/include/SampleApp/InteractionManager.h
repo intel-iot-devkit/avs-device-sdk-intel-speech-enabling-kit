@@ -43,7 +43,8 @@ public:
         std::shared_ptr<sampleApp::UIManager> userInterface,
         capabilityAgents::aip::AudioProvider holdToTalkAudioProvider,
         capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
-        capabilityAgents::aip::AudioProvider wakeWordAudioProvider = capabilityAgents::aip::AudioProvider::null());
+        capabilityAgents::aip::AudioProvider wakeWordAudioProvider = capabilityAgents::aip::AudioProvider::null(),
+        bool startPaStream = true);
 
     /**
      * Begins the interaction between the Sample App and the user. This should only be called at startup.
@@ -143,9 +144,6 @@ private:
 
     /// Whether a tap is currently occurring.
     bool m_isTapOccurring;
-
-    /// Whether the microphone is currently turned on.
-    bool m_isMicOn;
 
     /**
      * An internal executor that performs execution of callable objects passed to it sequentially but asynchronously.

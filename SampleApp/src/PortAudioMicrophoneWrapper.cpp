@@ -29,12 +29,13 @@ static const double SAMPLE_RATE = 16000;
 static const unsigned long PREFERRED_SAMPLES_PER_CALLBACK = paFramesPerBufferUnspecified;
 
 std::unique_ptr<PortAudioMicrophoneWrapper> PortAudioMicrophoneWrapper::create(
+    std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer,
     std::shared_ptr<AudioInputStream> stream) {
     if (!stream) {
         ConsolePrinter::simplePrint("Invalid stream passed to PortAudioMicrophoneWrapper");
         return nullptr;
     }
-    std::unique_ptr<PortAudioMicrophoneWrapper> portAudioMicrophoneWrapper(new PortAudioMicrophoneWrapper(stream));
+    std::unique_ptr<PortAudioMicrophoneWrapper> portAudioMicrophoneWrapper(new PortAudioMicrophoneWrapper(buffer, stream));
     if (!portAudioMicrophoneWrapper->initialize()) {
         ConsolePrinter::simplePrint("Failed to initialize PortAudioMicrophoneWrapper");
         return nullptr;
@@ -42,9 +43,10 @@ std::unique_ptr<PortAudioMicrophoneWrapper> PortAudioMicrophoneWrapper::create(
     return portAudioMicrophoneWrapper;
 }
 
-PortAudioMicrophoneWrapper::PortAudioMicrophoneWrapper(std::shared_ptr<AudioInputStream> stream) :
+PortAudioMicrophoneWrapper::PortAudioMicrophoneWrapper(std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer, std::shared_ptr<AudioInputStream> stream) :
         m_audioInputStream{stream},
-        m_paStream{nullptr} {
+        m_paStream{nullptr},
+        m_buffer(buffer) {
 }
 
 PortAudioMicrophoneWrapper::~PortAudioMicrophoneWrapper() {
@@ -60,12 +62,44 @@ bool PortAudioMicrophoneWrapper::initialize() {
         ConsolePrinter::simplePrint("Failed to create stream writer");
         return false;
     }
+    
+#ifdef KWD_HARDWARE
+    // openStream();
+    return true;
+#else
+    // PaError err;
+    // err = Pa_Initialize();
+    // if (err != paNoError) {
+    //     ConsolePrinter::simplePrint("Failed to initialize PortAudio");
+    //     return false;
+    // }
+    return openStream();
+#endif
+}
+
+bool PortAudioMicrophoneWrapper::closeStream() {
+    PaError err = Pa_CloseStream(m_paStream);
+    if(err != paNoError) {
+        ConsolePrinter::simplePrint("Failed to close PortAudio default stream");
+        return false;
+    }
+    err = Pa_Terminate();
+    if(err != paNoError) {
+        ConsolePrinter::simplePrint("Failed to terminate PortAudio");
+        return false;
+    }
+    printf("TERMINATED.....");
+    return true;
+}
+
+bool PortAudioMicrophoneWrapper::openStream() {
     PaError err;
     err = Pa_Initialize();
     if (err != paNoError) {
         ConsolePrinter::simplePrint("Failed to initialize PortAudio");
         return false;
     }
+
     err = Pa_OpenDefaultStream(
         &m_paStream,
         NUM_INPUT_CHANNELS,
@@ -75,16 +109,22 @@ bool PortAudioMicrophoneWrapper::initialize() {
         PREFERRED_SAMPLES_PER_CALLBACK,
         PortAudioCallback,
         this);
+
+    std::cout << "IS STREAMING: " << !Pa_IsStreamStopped(&m_paStream) << std::endl;
     if (err != paNoError) {
         ConsolePrinter::simplePrint("Failed to open PortAudio default stream");
         return false;
     }
-    // m_streaming = true;
     return true;
 }
 
 bool PortAudioMicrophoneWrapper::startStreamingMicrophoneData() {
     std::lock_guard<std::mutex> lock{m_mutex};
+#ifdef KWD_HARDWARE
+    if(!openStream()) {
+        return false;
+    }
+#endif
     PaError err = Pa_StartStream(m_paStream);
     if (err != paNoError) {
         ConsolePrinter::simplePrint("Failed to start PortAudio stream");
@@ -99,12 +139,21 @@ bool PortAudioMicrophoneWrapper::stopStreamingMicrophoneData() {
     if(!m_streaming)
         return true;
     PaError err = Pa_StopStream(m_paStream);
+    // PaError err = Pa_AbortStream(m_paStream);
     if (err != paNoError) {
         ConsolePrinter::simplePrint("Failed to stop PortAudio stream");
         return false;
     }
     m_streaming = false;
+    // printf("[BEFORE] Buffer size: %d\n", (int) m_buffer->size());
+    // m_buffer->clear();
+    // printf("[AFTER] Buffer size: %d\n", (int) m_buffer->size());
+#ifdef KWD_HARDWARE
+    return closeStream();
+    //return true;
+#else
     return true;
+#endif
 }
 
 int PortAudioMicrophoneWrapper::PortAudioCallback(
@@ -115,11 +164,17 @@ int PortAudioMicrophoneWrapper::PortAudioCallback(
     PaStreamCallbackFlags statusFlags,
     void* userData) {
     PortAudioMicrophoneWrapper* wrapper = static_cast<PortAudioMicrophoneWrapper*>(userData);
+    // printf("Buffer size: %d\n", (int) wrapper->m_buffer->size());
+    // wrapper->m_buffer->clear();
+    // printf("Buffer size: %d\n", (int) wrapper->m_buffer->size());
+    printf("Received from Driver Adding %lu\n", numSamples);
+    // printf("[BEFORE] SDS Buf Size: %d\n", wrapper->m_buffer->size());
     ssize_t returnCode = wrapper->m_writer->write(inputBuffer, numSamples);
     if (returnCode <= 0) {
         ConsolePrinter::simplePrint("Failed to write to stream.");
         return paAbort;
     }
+    // printf("[AFTER] SDS Buf Size: %d\n", wrapper->m_buffer->size());
     return paContinue;
 }
 

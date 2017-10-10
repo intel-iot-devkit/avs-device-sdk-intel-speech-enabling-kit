@@ -41,6 +41,7 @@ void KeywordObserver::onKeyWordDetected(
         endIndex != avsCommon::sdkInterfaces::KeyWordObserverInterface::UNSPECIFIED_INDEX &&
         beginIndex != avsCommon::sdkInterfaces::KeyWordObserverInterface::UNSPECIFIED_INDEX) {
         if (m_client) {
+            std::cout << "KeywordObserver: beginIndex = " << beginIndex << ", endIndex = " << endIndex << std::endl;
             m_client->notifyOfWakeWord(m_audioProvider, beginIndex, endIndex, keyword);
         }
     }

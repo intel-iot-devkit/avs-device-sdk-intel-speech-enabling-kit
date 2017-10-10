@@ -66,7 +66,8 @@ public:
         std::shared_ptr<AbstractHardwareController> controller,
         SetKeyWordObserverInterface keyWordObservers,
         SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(250));
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(250),
+        std::chrono::milliseconds msToPushPerIteration = std::chrono::milliseconds(20));
     
     /**
      * Destructor.
@@ -88,10 +89,12 @@ private:
      */
     HardwareKeywordDetector(
         std::shared_ptr<AudioInputStream> stream,
+        AudioFormat audioFormat,
         std::shared_ptr<AbstractHardwareController> controller,
         SetKeyWordObserverInterface keyWordObservers,
         SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-        std::chrono::milliseconds timeout);
+        std::chrono::milliseconds timeout,
+        std::chrono::milliseconds msToPushPerIteration);
 
     /**
      * Initializes the stream and kicks off a thread to poll the hardware for
@@ -103,6 +106,8 @@ private:
 
     /// The main function that reads data off of the audio stream
     void detectionLoop();
+
+    void readStreamLoop();
 
     /// The stream of audio data.
     const std::shared_ptr<avsCommon::avs::AudioInputStream> m_stream;
@@ -119,11 +124,17 @@ private:
     /// Indicates whether the internal main loop should keep running.
     std::atomic<bool> m_isShuttingDown;
 
+    std::atomic<int> m_streamIdx;
+
     /**
      * Internal thread that waits for a signal from the hardware that the
      * keyword has been detected.
      */
     std::thread m_detectionThread;
+
+    std::thread m_readStreamThread;
+
+    const size_t m_maxSamplesPerPush;
 };
 
 } // namespace kwd

@@ -8,6 +8,8 @@
 
 #include <AVSCommon/Utils/Logger/Logger.h>
 
+#define SAMPLE_OFFSET 9000
+
 namespace alexaClientSDK {
 namespace kwd {
 
@@ -18,6 +20,12 @@ using namespace avsCommon::utils;
 
 // Logging tag
 static const std::string TAG("HardwareKeywordDetector");
+
+/// The number of hertz per kilohertz.
+static const size_t HERTZ_PER_KILOHERTZ = 1000;
+
+/// The timeout to use for read calls to the SharedDataStream.
+const std::chrono::milliseconds TIMEOUT_FOR_READ_CALLS = std::chrono::milliseconds(1000);
 
 /**
  * Create a LogEntry using this file's TAG and the specified event string.
@@ -32,7 +40,8 @@ std::unique_ptr<HardwareKeywordDetector> HardwareKeywordDetector::create(
     std::shared_ptr<AbstractHardwareController> controller,
     SetKeyWordObserverInterface keyWordObservers,
     SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-    std::chrono::milliseconds timeout)
+    std::chrono::milliseconds timeout,
+    std::chrono::milliseconds msToPushPerIteration)
 {
     // Verify that the given stream is not NULL
     if (!stream) {
@@ -56,9 +65,9 @@ std::unique_ptr<HardwareKeywordDetector> HardwareKeywordDetector::create(
     // Initialize the detector, and return it
     std::unique_ptr<HardwareKeywordDetector> detector(
             new HardwareKeywordDetector(
-                stream, controller, keyWordObservers,
+                stream, audioFormat, controller, keyWordObservers,
                 keyWordDetectorStateObservers, 
-                timeout));
+                timeout, msToPushPerIteration));
 
     if(!detector->init()) {
         ACSDK_ERROR(LX("createFailed").d("reason", "initDetectorFailed"));
@@ -73,16 +82,23 @@ HardwareKeywordDetector::~HardwareKeywordDetector() {
     if(m_detectionThread.joinable()) {
         m_detectionThread.join();
     }
+    if(m_readStreamThread.joinable()) {
+        m_readStreamThread.join();
+    }
 }
 
 HardwareKeywordDetector::HardwareKeywordDetector(
     std::shared_ptr<AudioInputStream> stream,
+    AudioFormat audioFormat,
     std::shared_ptr<AbstractHardwareController> controller,
     SetKeyWordObserverInterface keyWordObservers,
     SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-    std::chrono::milliseconds timeout) :
+    std::chrono::milliseconds timeout,
+    std::chrono::milliseconds msToPushPerIteration) :
         AbstractKeywordDetector(keyWordObservers, keyWordDetectorStateObservers),
-        m_stream{stream}, m_controller{controller}, m_timeout(timeout)
+        m_stream{stream}, m_controller{controller}, m_timeout(timeout),
+        m_streamIdx(0), m_maxSamplesPerPush{
+            (audioFormat.sampleRateHz / HERTZ_PER_KILOHERTZ) * msToPushPerIteration.count()}
 { }
 
 bool HardwareKeywordDetector::init() {
@@ -95,15 +111,39 @@ bool HardwareKeywordDetector::init() {
 
     m_isShuttingDown = false;
     m_detectionThread = std::thread(&HardwareKeywordDetector::detectionLoop, this);
+    m_readStreamThread = std::thread(&HardwareKeywordDetector::readStreamLoop, this);
     return true;
 }
 
+void HardwareKeywordDetector::readStreamLoop() {
+    uint16_t audioData[m_maxSamplesPerPush];
+    ssize_t wordsRead;
+
+    while(!m_isShuttingDown) {
+        bool didErrorOccur;
+        wordsRead = readFromStream(
+            m_streamReader, m_stream, audioData, m_maxSamplesPerPush, 
+            TIMEOUT_FOR_READ_CALLS, &didErrorOccur);
+        if(didErrorOccur) {
+            ACSDK_ERROR(LX("detectionLoopFailed").d("reason", "readStreamFailed"));
+            break;
+        }
+        if(wordsRead > 0) {
+            m_streamIdx = m_streamReader->tell();
+            // std::cout << "!!! UPDATED STREAM IDX: " << m_streamIdx << std::endl;
+        }
+    }
+
+    m_streamReader->close();
+}
+
 void HardwareKeywordDetector::detectionLoop() {
+    std::unique_ptr<KeywordDetection> detection;
+
     // Notify the state observers, abd set to ACTIVE
     notifyKeyWordDetectorStateObservers(
         KeyWordDetectorStateObserverInterface::KeyWordDetectorState::ACTIVE);
-    std::unique_ptr<KeywordDetection> detection;
-    
+
     while(!m_isShuttingDown) {
         detection = m_controller->read(m_timeout);
 
@@ -112,20 +152,19 @@ void HardwareKeywordDetector::detectionLoop() {
             continue;
         }
 
-        if(detection->getBegin() < 0 && detection->getEnd() < 0) {
-            notifyKeyWordObservers(
-                    m_stream, detection->getKeyword(),
-                    KeyWordObserverInterface::UNSPECIFIED_INDEX,
-                    m_streamReader->tell());
-        } else {
-            notifyKeyWordObservers(
-                    m_stream, detection->getKeyword(),
-                    detection->getBegin(),
-                    detection->getEnd());
-        }
-    }
+        std::cout << "!!! UPDATED STREAM IDX: " << m_streamIdx << std::endl;
+        int offset = (m_streamIdx == 0) ? 0 : SAMPLE_OFFSET;
+        // int offset = 8000;
 
-    m_streamReader->close();
+        auto begin = m_streamIdx + detection->getBegin() - offset;
+        auto end = m_streamIdx + detection->getEnd() - offset;
+
+        std::cout << "!!!! BEGIN: " << begin << ", END: " << end << ", OFFSET: " << offset << std::endl;
+        
+        notifyKeyWordObservers(
+                m_stream, detection->getKeyword(),
+                begin, end);
+    }
 }
 
 } // kwd

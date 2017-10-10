@@ -77,10 +77,6 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     
     auto detection = KeywordDetection::create(payload[0], payload[1], m_keyword);
 
-    // Freeing control elem value
-    if(control != NULL)
-        snd_ctl_elem_value_free(control);
-
     return detection;
 }
 

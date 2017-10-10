@@ -38,7 +38,9 @@ void StopPortAudioStreamObserver::onDialogUXStateChanged(DialogUXState newState)
         if(m_micWrapper->isStreaming()) {
             if(!m_micWrapper->stopStreamingMicrophoneData()) {
                 ACSDK_ERROR(LX("onDialogUXStateChanged").d("reason", "stopStreamFailed"));
-            }
+            } /*else {
+                m_micWrapper->startStreamingMicrophoneData();
+            }*/
         }
     }
 }
