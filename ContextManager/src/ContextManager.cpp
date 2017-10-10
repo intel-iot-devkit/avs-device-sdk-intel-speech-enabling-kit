@@ -18,6 +18,7 @@
 #include <string>
 
 #include <AVSCommon/Utils/Logger/Logger.h>
+#include <AVSCommon/Utils/TestLogger/TestLogger.h>
 
 #include "ContextManager/ContextManager.h"
 
@@ -183,6 +184,10 @@ SetStateResult ContextManager::updateStateLocked(
                         .d("namespace", stateProviderName.nameSpace)
                         .d("name", stateProviderName.name));
     }
+    testLogger::Log::info("ContextManager", "Context State Updated: %s::%s - %s", 
+            stateProviderName.nameSpace.c_str(),
+            stateProviderName.name.c_str(),
+            jsonState.c_str());
     return SetStateResult::SUCCESS;
 }
 
