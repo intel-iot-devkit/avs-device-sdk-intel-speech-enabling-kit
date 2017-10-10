@@ -22,6 +22,7 @@
 
 #include <AVSCommon/AVS/ExceptionErrorType.h>
 #include <AVSCommon/Utils/Logger/Logger.h>
+#include <AVSCommon/Utils/TestLogger/TestLogger.h>
 #include <AVSCommon/Utils/Metrics.h>
 
 #include "ADSL/DirectiveSequencer.h"
@@ -78,6 +79,7 @@ bool DirectiveSequencer::onDirective(std::shared_ptr<AVSDirective> directive) {
                        .d("reason", "isShuttingDown"));
         return false;
     }
+    testLogger::Log::info("DirectiveSequencer", "Received directive: %s", directive->getUnparsedDirective().c_str());
     ACSDK_INFO(LX("onDirective").d("directive", directive->getHeaderAsString()));
     m_receivingQueue.push_back(directive);
     m_wakeReceivingLoop.notify_one();

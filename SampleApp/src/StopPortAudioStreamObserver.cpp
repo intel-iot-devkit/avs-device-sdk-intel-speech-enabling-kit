@@ -5,11 +5,13 @@
  */
 
 #include <AVSCommon/Utils/Logger/Logger.h>
+#include <AVSCommon/Utils/TestLogger/TestLogger.h>
 
 #include "SampleApp/StopPortAudioStreamObserver.h"
-
 namespace alexaClientSDK {
 namespace sampleApp {
+
+using namespace avsCommon::utils::testLogger;
 
 // Logging tag
 static const std::string TAG("StopPortAudioStreamObserver");
@@ -34,6 +36,7 @@ std::shared_ptr<StopPortAudioStreamObserver> StopPortAudioStreamObserver::create
 }
 
 void StopPortAudioStreamObserver::onDialogUXStateChanged(DialogUXState newState) {
+    Log::info(TAG.c_str(), "Dialog State Changed: %s", stateToString(newState).c_str());
     if(newState == DialogUXState::FINISHED || newState == DialogUXState::IDLE) {
         if(m_micWrapper->isStreaming()) {
             if(!m_micWrapper->stopStreamingMicrophoneData()) {
