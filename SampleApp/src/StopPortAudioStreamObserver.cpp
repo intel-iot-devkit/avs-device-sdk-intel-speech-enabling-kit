@@ -37,7 +37,7 @@ std::shared_ptr<StopPortAudioStreamObserver> StopPortAudioStreamObserver::create
 
 void StopPortAudioStreamObserver::onDialogUXStateChanged(DialogUXState newState) {
     Log::info(TAG.c_str(), "Dialog State Changed: %s", stateToString(newState).c_str());
-    if(newState == DialogUXState::FINISHED || newState == DialogUXState::IDLE) {
+    if(newState == DialogUXState::THINKING) {
         if(m_micWrapper->isStreaming()) {
             if(!m_micWrapper->stopStreamingMicrophoneData()) {
                 ACSDK_ERROR(LX("onDialogUXStateChanged").d("reason", "stopStreamFailed"));

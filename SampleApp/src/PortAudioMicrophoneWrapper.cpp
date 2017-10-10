@@ -88,7 +88,6 @@ bool PortAudioMicrophoneWrapper::closeStream() {
         ConsolePrinter::simplePrint("Failed to terminate PortAudio");
         return false;
     }
-    printf("TERMINATED.....");
     return true;
 }
 
