@@ -17,7 +17,6 @@
 
 #include "SampleApp/KeywordObserver.h"
 #include "SampleApp/ConnectionObserver.h"
-#include "SampleApp/AipObserver.h"
 #include "SampleApp/SampleApplication.h"
 #include "SampleApp/StartPortAudioStreamObserver.h"
 #include "SampleApp/StopPortAudioStreamObserver.h"
@@ -268,7 +267,6 @@ bool SampleApplication::initialize(
         return false;
     }
 
-    client->addObserver(AipObserver::create());
     // Add userInterfaceManager as observer of locale setting.
     client->addSettingObserver("locale", userInterfaceManager);
     // Send default settings set by the user to AVS.

@@ -228,8 +228,6 @@ public:
      */
     std::future<bool> notifyOfHoldToTalkEnd();
 
-    void addObserver(std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer);
-
     /**
      * Destructor.
      */
