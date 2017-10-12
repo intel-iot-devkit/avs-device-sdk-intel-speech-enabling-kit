@@ -1,7 +1,9 @@
 #!/bin/bash
 
-if [ -d "avs_build" ] ; then
-    rm -r avs_build
+build_dir="sdk-build"
+
+if [ -d "${build_dir}" ] ; then
+    rm -r ${build_dir}
 fi
 
-mkdir avs_build && cp build_cmake.sh avs_build && cd avs_build && ./build_cmake.sh && make -j4
+mkdir ${build_dir} && cp build_cmake.sh ${build_dir} && cd ${build_dir} && ./build_cmake.sh && make -j4
