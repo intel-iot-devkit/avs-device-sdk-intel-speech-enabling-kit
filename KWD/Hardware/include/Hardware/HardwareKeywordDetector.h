@@ -104,9 +104,13 @@ private:
      */
     bool init(); 
 
-    /// The main function that reads data off of the audio stream
+    /// The main function that polls from the hardware conntroller for kw events
     void detectionLoop();
 
+    /**
+     * The main function that reads data off of the audio stream to be able to
+     * update the internal stream reader offset.
+     */
     void readStreamLoop();
 
     /// The stream of audio data.
@@ -124,6 +128,7 @@ private:
     /// Indicates whether the internal main loop should keep running.
     std::atomic<bool> m_isShuttingDown;
 
+    /// Current index of the reader in the SDS
     std::atomic<int> m_streamIdx;
 
     /**
@@ -132,8 +137,13 @@ private:
      */
     std::thread m_detectionThread;
 
+    /**
+     * Inernal thread that reads from the audio stream to update the internal
+     * stream reader index.
+     */
     std::thread m_readStreamThread;
 
+    /// The max number of samples to push read from the audio stream.
     const size_t m_maxSamplesPerPush;
 };
 

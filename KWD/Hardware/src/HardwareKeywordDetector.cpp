@@ -130,7 +130,6 @@ void HardwareKeywordDetector::readStreamLoop() {
         }
         if(wordsRead > 0) {
             m_streamIdx = m_streamReader->tell();
-            // std::cout << "!!! UPDATED STREAM IDX: " << m_streamIdx << std::endl;
         }
     }
 
@@ -152,15 +151,10 @@ void HardwareKeywordDetector::detectionLoop() {
             continue;
         }
 
-        std::cout << "!!! UPDATED STREAM IDX: " << m_streamIdx << std::endl;
         int offset = (m_streamIdx == 0) ? 0 : SAMPLE_OFFSET;
-        // int offset = 8000;
-
         auto begin = m_streamIdx + detection->getBegin() - offset;
         auto end = m_streamIdx + detection->getEnd() - offset;
 
-        std::cout << "!!!! BEGIN: " << begin << ", END: " << end << ", OFFSET: " << offset << std::endl;
-        
         notifyKeyWordObservers(
                 m_stream, detection->getKeyword(),
                 begin, end);
