@@ -36,7 +36,7 @@ public:
      * @return @c KeywordDetection when a detection occurs, otherwise @c nullptr
      * if an error occurs, or a timeout
      */
-    std::unique_ptr<KeywordDetection> read(std::chrono::milliseconds timout) override;
+    std::unique_ptr<KeywordDetection> read(std::chrono::milliseconds timeout) override;
     
     /**
      * Destructor.
