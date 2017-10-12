@@ -21,7 +21,6 @@
 #include <ACL/Transport/HTTP2MessageRouter.h>
 #include <ACL/Transport/PostConnectObject.h>
 #include <AVSCommon/AVS/Attachment/AttachmentManager.h>
-#include <AVSCommon/Utils/TestLogger/DirectiveLogger.h>
 #include <AVSCommon/AVS/ExceptionEncounteredSender.h>
 #include <Settings/SettingsUpdatedEventSender.h>
 #include <ContextManager/ContextManager.h>
@@ -30,8 +29,6 @@
 
 namespace alexaClientSDK {
 namespace defaultClient {
-
-using namespace avsCommon::utils::testLogger;
 
 /// String to identify log entries originating from this file.
 static const std::string TAG("DefaultClient");
@@ -310,13 +307,6 @@ bool DefaultClient::initialize(
         return false;
     }
 
-    auto directiveLogger = DirectiveLogger::create(exceptionSender);
-    if (!m_directiveSequencer->addDirectiveHandler(directiveLogger)) {
-        ACSDK_ERROR(LX("initializeFailed")
-                        .d("reason", "unableToRegisterDirectiveHandler")
-                        .d("directiveHandler", "DirectiveLogger"));
-        return false;
-    }
     /*
      * The following two statements show how to register capability agents to the directive sequencer.
      */
