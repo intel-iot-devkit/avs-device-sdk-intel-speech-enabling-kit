@@ -35,6 +35,12 @@ public:
      */
     void onDialogUXStateChanged(DialogUXState newState);
 
+    /**
+     * Enable reading from the controller.
+     *
+     * \note This starts the timeout for notifying that a keyword occurred.
+     */
+    void enableReading();
 
     /**
      * Read a @c KeywordDetection from the hardware controller.
@@ -69,6 +75,15 @@ private:
 
     /// Keyword which was recognized
     std::string m_keyword;
+
+    /// Conditional variable used for syncronization between triggeredRead() and read()
+    std::condition_variable m_cv;
+
+    /// Boolean flag to signal that it is time to trigger the keyword.
+    std::atomic<bool> m_canRead;
+
+    /// Boolean flag to signal that reading should commense
+    std::atomic<bool> m_readEnabled;
 };
 
 } // stressTesterApp

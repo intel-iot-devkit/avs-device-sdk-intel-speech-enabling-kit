@@ -8,9 +8,9 @@ if(STRESS_TESTER_APP)
         message(FATAL_ERROR "The StressTesterApp requires the HardwareKeywordDetector")
     endif()
 
-    if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        message(FATAL_ERROR "The StressTesterApp currently only works on Linux")
-    endif()
+    # if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    #     message(FATAL_ERROR "The StressTesterApp currently only works on Linux")
+    # endif()
 
     add_subdirectory("src")
 endif()

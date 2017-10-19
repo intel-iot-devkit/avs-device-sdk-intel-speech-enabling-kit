@@ -15,11 +15,11 @@ namespace alexaClientSDK {
 namespace stressTesterApp {
 
 std::shared_ptr<Arguments> Arguments::parse(int argc, char** argv) {
-    if(argc < 4) {
+    if(argc < 5) {
         Log::error(TAG, "Too few arguments");
         usage(argv[0]);
         return nullptr;
-    } else if(argc > 4) {
+    } else if(argc > 5) {
         Log::error(TAG, "Too many arguments");
         usage(argv[0]);
         return nullptr;
@@ -28,19 +28,24 @@ std::shared_ptr<Arguments> Arguments::parse(int argc, char** argv) {
     std::string audioFile = std::string(argv[1]);
     std::string keyword = std::string(argv[2]);
     std::chrono::milliseconds interval = std::chrono::milliseconds(atoi(argv[3]));
+    std::string configFile = std::string(argv[4]);
     
-    return std::make_shared<Arguments>(Arguments(audioFile, keyword, interval));
+    return std::make_shared<Arguments>(Arguments(
+                audioFile, keyword, interval, configFile));
 }
 
 void Arguments::usage(const char* name) {
     fprintf(stderr, "usage: %s <audio-file> <keyword> <interval>\n", name);
-    fprintf(stderr, "\taudio-file - Utterance audio file to pass to alexa\n");
-    fprintf(stderr, "\tkeyword    - Keyword which will intiate the query\n");
-    fprintf(stderr, "\tinterval   - Interval in ms after finished directive to send again\n");
+    fprintf(stderr, "\taudio-file  - Utterance audio file to pass to alexa\n");
+    fprintf(stderr, "\tkeyword     - Keyword which will intiate the query\n");
+    fprintf(stderr, "\tinterval    - Interval in ms after finished directive to send again\n");
+    fprintf(stderr, "\tconfig-file - Alexa SDK configuration file\n");
 }
 
-Arguments::Arguments(std::string audioFile, std::string keyword, std::chrono::milliseconds interval) :
-    m_audioFile(audioFile), m_keyword(keyword), m_interval(interval)
+Arguments::Arguments(std::string audioFile, std::string keyword, 
+        std::chrono::milliseconds interval, std::string configFile) :
+    m_audioFile(audioFile), m_keyword(keyword), m_interval(interval),
+    m_configFile(configFile)
 {}
 
 std::string Arguments::getAudioFile() {
@@ -53,6 +58,10 @@ std::string Arguments::getKeyword() {
 
 std::chrono::milliseconds Arguments::getInterval() {
     return m_interval;
+}
+
+std::string Arguments::getConfigFile() {
+    return m_configFile;
 }
     
 } // stressTesterApp

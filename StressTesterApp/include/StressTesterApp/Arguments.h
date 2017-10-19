@@ -41,6 +41,11 @@ public:
      */
     std::chrono::milliseconds getInterval();
 
+    /**
+     * Get the configuration file for the Alexa SDK.
+     */
+    std::string getConfigFile();
+
 private:
     /**
      * Print the usage for the application.
@@ -55,8 +60,11 @@ private:
      * @param audioFile Sound file to load
      * @param keyword Keyword
      * @param interval Interval
+     * @param configFile Alexa SDK configuration file path
      */
-    Arguments(std::string audioFile, std::string keyword, std::chrono::milliseconds interval);
+    Arguments(std::string audioFile, std::string keyword, 
+            std::chrono::milliseconds interval,
+            std::string configFile);
 
     /// Sound file to load as the voice input for Alexa
     std::string m_audioFile;
@@ -67,6 +75,9 @@ private:
     /// Interval to run send another command to Alexa after the completion
     /// of a directive.
     std::chrono::milliseconds m_interval;
+
+    /// Alexa SDK config file
+    std::string m_configFile;
 };
 
 } // stressTesterApp

@@ -35,7 +35,7 @@ public:
             std::shared_ptr<AudioInputStream> stream,
             std::string keyword,
             AudioInputStream::Index begin = KeyWordObserverInterface::UNSPECIFIED_INDEX,
-            AudioInputStream::Index end = KeyWordObserverInterface::UNSPECIFIED_INDEX);
+            AudioInputStream::Index end = KeyWordObserverInterface::UNSPECIFIED_INDEX) override;
 
     /**
      * Destructor.
@@ -48,10 +48,14 @@ private:
      *
      * @param audioData Raw audio data to pass to the @c AudioInputStream
      */
-    AudioFilePlayer(std::vector<uint8_t> audioData);
+    AudioFilePlayer(uint8_t* audioData, int audioDataLen);
 
     /// Audio data to pass to the @c AudioInputStream
-    std::vector<uint8_t> m_audioData;
+    // std::vector<char> m_audioData;
+    uint8_t* m_audioData;
+    int m_audioDataLen;
+
+    std::unique_ptr<AudioInputStream::Writer> m_streamWriter;
 };
 
 } // stressTesterApp
