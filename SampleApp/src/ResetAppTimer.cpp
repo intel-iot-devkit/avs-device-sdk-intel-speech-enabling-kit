@@ -4,6 +4,8 @@
  * TODO: Add Intel copyright
  */
 
+#include <thread>
+
 #include "SampleApp/ResetAppTimer.h"
 
 namespace alexaClientSDK {
@@ -38,7 +40,8 @@ void ResetAppTimer::onDialogUXStateChanged(DialogUXState state) {
 
 bool ResetAppTimer::startTimer() {
     if(m_running) return false;
-    std::async(std::launch::async, std::bind(&ResetAppTimer::run, this));
+    auto th = std::thread(&ResetAppTimer::run, this);
+    th.detach();
     return true;
 }
 
