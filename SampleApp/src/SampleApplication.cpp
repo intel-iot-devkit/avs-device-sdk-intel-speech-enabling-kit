@@ -389,7 +389,7 @@ bool SampleApplication::initialize(
 #if defined(SOCK_HW_CTRL)
     controller = kwd::SocketHardwareController::create("localhost", 5000);
 #elif defined(ALSA_HW_CTRL)
-    controller = kwd::AlsaHardwareController::create("hw:1", "Alexa");
+    controller = kwd::AlsaHardwareController::create("hw:0", "Alexa");
 #endif
     auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
     if(!startMicObserver) {
