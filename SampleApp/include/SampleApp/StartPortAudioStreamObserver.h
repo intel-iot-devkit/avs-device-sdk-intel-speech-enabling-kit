@@ -41,7 +41,7 @@ public:
             std::shared_ptr<AudioInputStream> stream,
             std::string keyword,
             AudioInputStream::Index begin = KeyWordObserverInterface::UNSPECIFIED_INDEX,
-            AudioInputStream::Index end = KeyWordObserverInterface::UNSPECIFIED_INDEX);
+            AudioInputStream::Index end = KeyWordObserverInterface::UNSPECIFIED_INDEX) override;
 
     /**
      * Destructor.
