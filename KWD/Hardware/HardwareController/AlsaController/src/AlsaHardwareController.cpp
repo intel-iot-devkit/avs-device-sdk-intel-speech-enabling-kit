@@ -12,7 +12,7 @@ namespace alexaClientSDK {
 namespace kwd {
 
 // Logging tag
-static const std::string TAG("SocketHardwareController");
+static const std::string TAG("AlsaHardwareController");
 #define LX(event) alexaClientSDK::avsCommon::utils::logger::LogEntry(TAG, event)
 
 std::shared_ptr<AlsaHardwareController> AlsaHardwareController::create(
