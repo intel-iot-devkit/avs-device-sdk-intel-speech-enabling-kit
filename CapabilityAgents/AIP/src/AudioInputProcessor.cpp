@@ -454,9 +454,6 @@ bool AudioInputProcessor::executeRecognize(
     // Note that we're preparing to send a Recognize event.
     m_preparingToSend = true;
 
-    //  Start assembling the context; we'll service the callback after assembling our Recognize event.
-    m_contextManager->getContext(shared_from_this());
-
     // Stop the ExpectSpeech timer so we don't get a timeout.
     m_expectingSpeechTimer.stop();
 
@@ -465,6 +462,9 @@ bool AudioInputProcessor::executeRecognize(
         m_wakeword = keyword;
         executeProvideState();
     }
+
+    //  Start assembling the context; we'll service the callback after assembling our Recognize event.
+    m_contextManager->getContext(shared_from_this());
 
     // Record provider as the last-used AudioProvider so it can be used in the event of an ExpectSpeech directive.
     m_lastAudioProvider = provider;
