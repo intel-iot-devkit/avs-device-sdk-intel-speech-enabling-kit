@@ -207,7 +207,7 @@ def parse_stderr_log(args):
     for i in re_lib_log_stderr.findall(data):
         log = LibraryLog(i[6], months[i[1]], i[2], i[3], i[4], i[5], 0, i[7], i[8], '', '')
         stmt = i[9]
-        if stmt == 'Keyword Detected':
+        if 'Keyword Detected' in stmt:
             results.keyword_recognitions += 1
         elif 'Dialog State Changed' in stmt:
             state = re.findall('.+:\s(.+)', stmt)[0]
