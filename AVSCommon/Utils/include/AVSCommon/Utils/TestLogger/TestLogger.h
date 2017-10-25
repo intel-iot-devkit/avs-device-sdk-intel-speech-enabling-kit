@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#include <thread>
 
 #define LOG_TYPE_DEBUG "DEBUG"
 #define LOG_TYPE_INFO  "INFO"
@@ -34,10 +35,13 @@ private:
      */
     static void log(const char* tag, const char* type, const char* format, va_list args)
     {
+        auto thread_id = std::this_thread::get_id();
+        std::hash<std::thread::id> hasher;
+        int tid = hasher(thread_id);
         char buf[80];
         time_t ts = time(NULL);
         strftime(buf, 80, "%c", localtime(&ts));
-        fprintf(stderr, "%s - %-5s - %s : ", buf, type, tag);
+        fprintf(stderr, "[%d] %s - %-5s - %s : ", tid, buf, type, tag);
         vfprintf(stderr, format, args);
         fprintf(stderr, "\n");
     };
