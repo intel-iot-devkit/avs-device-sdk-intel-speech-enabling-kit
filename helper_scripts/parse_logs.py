@@ -5,10 +5,12 @@ import re
 from datetime import datetime
 import csv
 import json
+import calendar
 
 
 # Regexes used to parse out log statements
 re_lib_log = re.compile("(\d\d\d\d)-(\d\d)-(\d\d)\s(\d\d):(\d\d):(\d\d).(\d\d\d)\s\[.+\]\s([A-Za-z0-9])\s([A-Za-z0-9]+):([A-Za-z0-9]+):(.+=.+)*")
+re_lib_log_stderr = re.compile("([A-za-z]{3})\s([A-za-z]{3})\s(\d\d)\s(\d\d):(\d\d):(\d\d)\s(\d\d\d\d)\s-\s(INFO|DEBUG|ERROR|WARN)\s{0,5}-\s([A-Za-z0-9]+)\s:\s(.+)")
 re_keys = re.compile("([A-Za-z0-9]+)=")
 re_values = re.compile("=([A-Za-z0-9]+|\{.+\})")
 
@@ -38,7 +40,7 @@ class LibraryLog:
 
     def __str__(self):
         return '{} - {}: {}:{} - {}'.format(
-                self.ts, self.level, self.cls, self.method, self.values) 
+                self.ts, self.level, self.cls, self.method, self.values)
         
 
 class Results:
@@ -133,7 +135,7 @@ class Results:
                 if i['start'] is not None:
                     i['start'] = i['start'].strftime('%b %a %d %Y - %H:%M:%S.%f')
                 if i['end'] is not None:
-                    i['end'] = i['end'].strftime('%b %a %d %Y - %H:%M:%S.f')
+                    i['end'] = i['end'].strftime('%b %a %d %Y - %H:%M:%S.%f')
                 writer.writerow(i)
 
     def _create_data_entry(self, start, end, sc=False, ds_from=None, 
@@ -157,13 +159,7 @@ class Results:
         }
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='Input log file')
-    parser.add_argument('csv_output', help='CSV results output for the log file')
-    parser.add_argument('errors_output', help='Error logs output')
-    parser.add_argument('directives_output', help='Received directives output')
-    args = parser.parse_args()
+def parse_stdout_log(args):
     results = Results()
     data = None
 
@@ -195,8 +191,59 @@ def main():
     results.write_errors(args.errors_output)
     print('-- Writing :', args.directives_output)
     results.write_directives(args.directives_output)
-
     print('-- Done.')
+
+
+def parse_stderr_log(args):
+    results = Results()
+    data = None
+    months = {v: k for k,v in enumerate(calendar.month_abbr)}
+    curr_dia_state = None
+
+    with open(args.input, 'r') as f:
+        data = f.read()
+
+    print('-- Parsing and analyzing logs')
+    for i in re_lib_log_stderr.findall(data):
+        log = LibraryLog(i[6], months[i[1]], i[2], i[3], i[4], i[5], 0, i[7], i[8], '', '')
+        stmt = i[9]
+        if stmt == 'Keyword Detected':
+            results.keyword_recognitions += 1
+        elif 'Dialog State Changed' in stmt:
+            state = re.findall('.+:\s(.+)', stmt)[0]
+            if curr_dia_state is not None:
+                results.add_dialog_state_change(log.ts, curr_dia_state, state)
+            curr_dia_state = state
+        elif 'Received directive' in stmt:
+            directive = json.loads(re.findall('.+:\s(.+)', stmt)[0])
+            log.values = directive
+            results.add_directive(directive)
+            if directive['directive']['header']['name'] == 'StopCapture':
+                results.add_stop_capture(log.ts)
+        else:
+            print('-- UNPROCESSED STATEMENT:', stmt)
+
+    print('-- Writing :', args.csv_output)
+    results.write_to_csv(args.csv_output)
+    print('-- Writing :', args.directives_output)
+    results.write_directives(args.directives_output)
+    print('-- Done.')
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', help='Input log file')
+    parser.add_argument('csv_output', help='CSV results output for the log file')
+    parser.add_argument('errors_output', help='Error logs output')
+    parser.add_argument('directives_output', help='Received directives output')
+    parser.add_argument('--stderr', default=False, action='store_true',
+            help='Parse a log from the stderr')
+    args = parser.parse_args()
+    
+    if args.stderr:
+        parse_stderr_log(args)
+    else:
+        parse_stdout_log(args)
 
 if __name__ == '__main__':
     main()
