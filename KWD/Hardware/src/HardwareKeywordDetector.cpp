@@ -121,7 +121,7 @@ void HardwareKeywordDetector::readStreamLoop() {
 
     while(!m_isShuttingDown) {
         bool didErrorOccur;
-        wordsRead = readFromStream(
+        wordsRead = readFromSds(
             m_streamReader, m_stream, audioData, m_maxSamplesPerPush, 
             TIMEOUT_FOR_READ_CALLS, &didErrorOccur);
         if(didErrorOccur) {
@@ -159,6 +159,58 @@ void HardwareKeywordDetector::detectionLoop() {
                 m_stream, detection->getKeyword(),
                 begin, end);
     }
+}
+
+/// Copy of the AbstractKeywordDetector::readFromStream method which removes
+/// unneeded log statement, because for the HardwareKeywordDetector and timeout
+/// in reading from SDS is not a bad thing.
+ssize_t HardwareKeywordDetector::readFromSds(
+    std::shared_ptr<avsCommon::avs::AudioInputStream::Reader> reader,
+    std::shared_ptr<avsCommon::avs::AudioInputStream> stream,
+    void* buf,
+    size_t nWords,
+    std::chrono::milliseconds timeout,
+    bool* errorOccurred) {
+    if (errorOccurred) {
+        *errorOccurred = false;
+    }
+    ssize_t wordsRead = reader->read(buf, nWords, timeout);
+    // Stream has been closed
+    if (wordsRead == 0) {
+        ACSDK_DEBUG(LX("readFromStream").d("event", "streamClosed"));
+        notifyKeyWordDetectorStateObservers(KeyWordDetectorStateObserverInterface::KeyWordDetectorState::STREAM_CLOSED);
+        if (errorOccurred) {
+            *errorOccurred = true;
+        }
+        // This represents some sort of error with the read() call
+    } else if (wordsRead < 0) {
+        switch (wordsRead) {
+            case AudioInputStream::Reader::Error::OVERRUN:
+                ACSDK_ERROR(LX("readFromStreamFailed")
+                                .d("reason", "streamOverrun")
+                                .d("numWordsOverrun",
+                                   std::to_string(
+                                       reader->tell(AudioInputStream::Reader::Reference::BEFORE_WRITER) -
+                                       stream->getDataSize())));
+                reader->seek(0, AudioInputStream::Reader::Reference::BEFORE_WRITER);
+                break;
+            case AudioInputStream::Reader::Error::TIMEDOUT:
+                break;
+            default:
+                // We should never get this since we are using a Blocking Reader.
+                ACSDK_ERROR(LX("readFromStreamFailed")
+                                .d("reason", "unexpectedError")
+                                // Leave as ssize_t to avoid messiness of casting to enum.
+                                .d("error", wordsRead));
+
+                notifyKeyWordDetectorStateObservers(KeyWordDetectorStateObserverInterface::KeyWordDetectorState::ERROR);
+                if (errorOccurred) {
+                    *errorOccurred = true;
+                }
+                break;
+        }
+    }
+    return wordsRead;
 }
 
 } // kwd

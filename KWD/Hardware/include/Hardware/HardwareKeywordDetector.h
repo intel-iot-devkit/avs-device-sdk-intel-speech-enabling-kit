@@ -113,6 +113,19 @@ private:
      */
     void readStreamLoop();
 
+    /**
+     * Copy of the AbstractKeywordDetector::readFromStream method which removes
+     * unneeded log statement, because for the HardwareKeywordDetector and timeout
+     * in reading from SDS is not a bad thing.
+     */
+    ssize_t readFromSds(
+        std::shared_ptr<avsCommon::avs::AudioInputStream::Reader> reader,
+        std::shared_ptr<avsCommon::avs::AudioInputStream> stream,
+        void* buf,
+        size_t nWords,
+        std::chrono::milliseconds timeout,
+        bool* errorOccurred);
+
     /// The stream of audio data.
     const std::shared_ptr<avsCommon::avs::AudioInputStream> m_stream;
 
