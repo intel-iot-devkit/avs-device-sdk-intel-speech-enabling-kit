@@ -6,6 +6,7 @@ from datetime import datetime
 import csv
 import json
 import calendar
+from statistics import stdev, mean, median
 
 
 # Regexes used to parse out log statements
@@ -43,25 +44,101 @@ class LibraryLog:
                 self.ts, self.level, self.cls, self.method, self.values)
         
 
+class StateTracker:
+    """Object for tracking statistics about state transitions
+    """
+    def __init__(self):
+        self.times = []
+        self.last_idle_ts = None 
+        self.current_state = None
+        self.state_times = {}
+        self.transitions = []
+
+    def __iter__(self):
+        for i in self.transitions:
+            yield i
+
+    def add_transition(self, ts, from_state, to_state):
+        # Do additions for calculating the idle-to-idle stats
+        if self.current_state is None:
+            assert from_state == 'IDLE', 'First state must be IDLE!'
+            self.last_idle_ts = ts
+        elif from_state == 'IDLE':
+            elapsed = ts - self.last_idle_ts
+            self.times.append(elapsed.total_seconds())
+            self.last_idle_ts = ts
+        
+        # Update the current state
+        self.current_state = to_state
+        
+        # Add transition to the list of transitions
+        data = {'start_ts': ts, 'end_ts': None, 'from': from_state, 'to': to_state}
+
+        if self.transitions:
+            self.transitions[-1]['end_ts'] = ts
+            elapsed = ts - self.transitions[-1]['start_ts']
+
+            if from_state not in self.state_times:
+                self.state_times[from_state] = []
+
+            self.state_times[from_state].append(elapsed.total_seconds())
+
+        self.transitions.append(data)
+
+    def write_to_csv(self, filename):
+        header = ['state', 'min', 'max', 'stdev', 'median', 'mean']
+        with open(filename, 'w') as f:
+            writer = csv.DictWriter(f, header)
+            writer.writeheader()
+
+            times = self.times
+            min_time = min(times)
+            max_time = max(times)
+            stdev_time = stdev(times)
+            median_time = median(times)
+            mean_time = mean(times)
+
+            writer.writerow({
+                'state': 'Idle-to-Idle',
+                'min': min_time,
+                'max': max_time,
+                'stdev': stdev_time,
+                'median': median_time,
+                'mean': mean_time
+            })
+
+            for k in self.state_times:
+                times = self.state_times[k]
+                min_time = min(times)
+                max_time = max(times)
+                stdev_time = stdev(times)
+                median_time = median(times)
+                mean_time = mean(times)
+                writer.writerow({
+                    'state': k,
+                    'min': min_time,
+                    'max': max_time,
+                    'stdev': stdev_time,
+                    'median': median_time,
+                    'mean': mean_time
+                })
+
+
 class Results:
     """Results of analyzing the log file
     """
     def __init__(self):
-        self.dialog_state_trans = []
-        self.audio_input_state_trans = []
+        self.dialog_state_trans = StateTracker()
+        self.audio_input_state_trans = StateTracker()
         self.stop_capture_times = []
         self.errors = []
         self.directives = []
         self.keyword_recognitions = 0
         self.is_listening = False
+        # Structures for keeping track of statistics about state changes
     
     def add_dialog_state_change(self, ts, from_state, to_state):
-        data = {'start_ts': ts, 'end_ts': None, 'from': from_state, 'to': to_state}
-
-        if self.dialog_state_trans:
-            self.dialog_state_trans[-1]['end_ts'] = ts
-
-        self.dialog_state_trans.append(data)
+        self.dialog_state_trans.add_transition(ts, from_state, to_state)
 
         if to_state == 'LISTENING':
             self.is_listening = True
@@ -74,11 +151,7 @@ class Results:
         self.stop_capture_times[-1]['end_ts'] = ts
 
     def add_audio_input_state_change(self, ts, from_state, to_state):
-        data = {'start_ts': ts, 'end_ts': None, 'from': from_state, 'to': to_state}
-        if self.audio_input_state_trans:
-            self.audio_input_state_trans[-1]['end_ts'] = ts
-
-        self.audio_input_state_trans.append(data)
+        self.audio_input_state_trans.add_transition(ts, from_state, to_state)
 
         if to_state == 'RECOGNIZING':
             self.keyword_recognitions += 1
@@ -89,17 +162,24 @@ class Results:
     def add_directive(self, log):
         self.directives.append(log)
 
-    def write_errors(self, filename):
+    def write_results(self, base_filename):
+        self._write_errors(base_filename + '_errors.log')
+        self._write_directives(base_filename + '_directives.log')
+        self._write_to_csv(base_filename + '_raw_data.csv')
+        self.dialog_state_trans.write_to_csv(base_filename + '_dialog_stats.csv')
+        self.audio_input_state_trans.write_to_csv(base_filename + '_aip_stats.csv')
+
+    def _write_errors(self, filename):
         with open(filename, 'w') as f:
             for err in self.errors:
                 f.write('{}\n'.format(str(err)))
 
-    def write_directives(self, filename):
+    def _write_directives(self, filename):
         with open(filename, 'w') as f:
             for directive in self.directives:
                 f.write('{}\n'.format(str(directive)))
 
-    def write_to_csv(self, filename):
+    def _write_to_csv(self, filename):
         data = []
         # CSV header
         header = ['start', 'end', 'elapsed (sec)', 'Stop Capture',
@@ -185,12 +265,8 @@ def parse_stdout_log(args):
                 and lib.method != 'readFromStreamFailed'):
             results.add_error(lib)
 
-    print('-- Writing :', args.csv_output)
-    results.write_to_csv(args.csv_output)
-    print('-- Writing :', args.errors_output)
-    results.write_errors(args.errors_output)
-    print('-- Writing :', args.directives_output)
-    results.write_directives(args.directives_output)
+    print('-- Writing results')
+    results.write_results(args.basename)
     print('-- Done.')
 
 
@@ -223,19 +299,18 @@ def parse_stderr_log(args):
         else:
             print('-- UNPROCESSED STATEMENT:', stmt)
 
-    print('-- Writing :', args.csv_output)
-    results.write_to_csv(args.csv_output)
-    print('-- Writing :', args.directives_output)
-    results.write_directives(args.directives_output)
+    print('-- Writing results')
+    results.write_results(args.basename)
     print('-- Done.')
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', help='Input log file')
-    parser.add_argument('csv_output', help='CSV results output for the log file')
-    parser.add_argument('errors_output', help='Error logs output')
-    parser.add_argument('directives_output', help='Received directives output')
+    parser.add_argument('basename', help='Basename for result files')
+    # parser.add_argument('csv_output', help='CSV results output for the log file')
+    # parser.add_argument('errors_output', help='Error logs output')
+    # parser.add_argument('directives_output', help='Received directives output')
     parser.add_argument('--stderr', default=False, action='store_true',
             help='Parse a log from the stderr')
     args = parser.parse_args()
