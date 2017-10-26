@@ -16,15 +16,15 @@ NC='\033[0m' # No Color
 cwd=`pwd`
 
 function echo_info() {
-    echo -e "`date` : ${GREEN}INFO : $1 ${NC}"
+    echo -e "${GREEN}`date` : INFO : $1 ${NC}"
 }
 
 function echo_warn() {
-    echo -e "`date` : ${YELLOW}WARN : $1 ${NC}"
+    echo -e "${YELLOW}`date` : WARN : $1 ${NC}"
 }
 
 function echo_error() {
-    echo -e "`date` : ${RED}ERROR : $1 ${NC}"
+    echo -e "${RED}`date` : ERROR : $1 ${NC}"
 }
 
 function check_error() {
