@@ -580,6 +580,7 @@ bool AudioInputProcessor::executeStopCapture(bool stopImmediately, std::shared_p
 
         m_reader.reset();
         setState(ObserverInterface::State::BUSY);
+        setState(ObserverInterface::State::IDLE);
 
         if (info) {
             if (info->result) {
