@@ -155,6 +155,11 @@ void HardwareKeywordDetector::detectionLoop() {
         auto begin = m_streamIdx + detection->getBegin() - offset;
         auto end = m_streamIdx + detection->getEnd() - offset;
 
+        ACSDK_DEBUG(LX("detectionLoop")
+                .d("event", "keywordDetection")
+                .d("begin", begin)
+                .d("end", end));
+
         notifyKeyWordObservers(
                 m_stream, detection->getKeyword(),
                 begin, end);
@@ -177,7 +182,7 @@ ssize_t HardwareKeywordDetector::readFromSds(
     ssize_t wordsRead = reader->read(buf, nWords, timeout);
     // Stream has been closed
     if (wordsRead == 0) {
-        ACSDK_DEBUG(LX("readFromStream").d("event", "streamClosed"));
+        ACSDK_DEBUG(LX("readFromSds").d("event", "streamClosed"));
         notifyKeyWordDetectorStateObservers(KeyWordDetectorStateObserverInterface::KeyWordDetectorState::STREAM_CLOSED);
         if (errorOccurred) {
             *errorOccurred = true;
@@ -186,7 +191,7 @@ ssize_t HardwareKeywordDetector::readFromSds(
     } else if (wordsRead < 0) {
         switch (wordsRead) {
             case AudioInputStream::Reader::Error::OVERRUN:
-                ACSDK_ERROR(LX("readFromStreamFailed")
+                ACSDK_ERROR(LX("readFromSdsFailed")
                                 .d("reason", "streamOverrun")
                                 .d("numWordsOverrun",
                                    std::to_string(
@@ -198,7 +203,7 @@ ssize_t HardwareKeywordDetector::readFromSds(
                 break;
             default:
                 // We should never get this since we are using a Blocking Reader.
-                ACSDK_ERROR(LX("readFromStreamFailed")
+                ACSDK_ERROR(LX("readFromSdsFailed")
                                 .d("reason", "unexpectedError")
                                 // Leave as ssize_t to avoid messiness of casting to enum.
                                 .d("error", wordsRead));
