@@ -52,6 +52,13 @@ if [ -f "$dest" ] ; then
     exit -1
 fi
 
+sdk_config="$1/Integration/AlexaClientSDKConfig.json"
+if [ -f "$sdk_config" ] ; then
+    echo_info "Removing $sdk_config"
+    rm $sdk_config
+    check_error "Failed to remove $sdk_config"
+fi
+
 echo_info "Creating patch $dest"
 zip -r $dest $1
 check_error "Failed to create patch $dest"
