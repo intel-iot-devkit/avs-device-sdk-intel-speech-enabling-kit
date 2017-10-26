@@ -40,12 +40,18 @@ if [ "$#" -ne 2 ] ; then
     exit -1
 fi
 
-if [ ! -f "$1" ] ; then
+if [ ! -d "$1" ] ; then
     echo_error "C++ SDK build directory '$1' does not exist"
     exit -1
 fi
 
-dest="$base_name_$2.zip"
+dest="${base_name}_$2.zip"
+
+if [ -f "$dest" ] ; then
+    echo_error "Patch with name '$dest' already exists"
+    exit -1
+fi
+
 echo_info "Creating patch $dest"
 zip -r $dest $1
 check_error "Failed to create patch $dest"
