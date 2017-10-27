@@ -87,6 +87,11 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     
     auto detection = KeywordDetection::create(payload[0], payload[1], m_keyword);
 
+    ACSDK_DEBUG9(LX("read")
+            .d("event", "keywordDetection")
+            .d("begin", payload[0])
+            .d("end", payload[1]));
+
     return detection;
 }
 
