@@ -13,13 +13,23 @@
 
 #include <alsa/asoundlib.h>
 
+#include "AVSCommon/SDKInterfaces/AudioInputProcessorObserverInterface.h"
+
 #include "HardwareController/AbstractHardwareController.h"
 
 namespace alexaClientSDK {
 namespace kwd {
 
-class AlsaHardwareController : public AbstractHardwareController {
+using namespace avsCommon;
+using namespace avsCommon::sdkInterfaces;
+
+class AlsaHardwareController 
+    : public AbstractHardwareController
+    , public AudioInputProcessorObserverInterface {
 public:
+    /// Alias to the @c AudioInputProcessorObserverInterface::state for brevity
+    using AipState = AudioInputProcessorObserverInterface::State;
+
     /**
      * Creates a new pointer to an @c AlsaHardwareController.
      *
@@ -29,6 +39,8 @@ public:
      */
     static std::shared_ptr<AlsaHardwareController> create(std::string name, std::string keyword);
 
+    /// @name AbstractHardwareController Functions
+    /// @{
     /**
      * Read a @c KeywordDetection from the hardware controller.
      *
@@ -37,6 +49,12 @@ public:
      * if an error occurs, or a timeout
      */
     std::unique_ptr<KeywordDetection> read(std::chrono::milliseconds timeout) override;
+    /// @}
+
+    /// @name AudioInputProcessorObserverInterface Functions
+    /// @{
+    void onStateChanged(AipState state) override;
+    /// @}
     
     /**
      * Destructor.
@@ -59,6 +77,8 @@ private:
      */
     bool init();
 
+    snd_ctl_elem_value_t* createSndMixerCtl(const char* name, int index=0);
+
     /// Name of the ALSA controller to connect to
     std::string m_name;
 
@@ -67,6 +87,9 @@ private:
 
     /// Handle to the ALSA control device
     snd_ctl_t* m_ctl;
+
+    /// Current AIP state
+    AipState m_currentAipState;
 };
 
 } // kwd
