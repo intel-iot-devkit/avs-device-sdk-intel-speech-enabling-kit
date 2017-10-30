@@ -389,10 +389,10 @@ bool SampleApplication::initialize(
 #if defined(SOCK_HW_CTRL)
     controller = kwd::SocketHardwareController::create("localhost", 5000);
 #elif defined(ALSA_HW_CTRL)
-    controller = kwd::AlsaHardwareController::create("hw:0", "Alexa");
-    
+    std::shared_ptr<kwd::AlsaHardwareController> alsaCtrl = kwd::AlsaHardwareController::create("hw:0", "Alexa");
     // Add controller to audio input observers
-    client->addAudioInputProcessorObserver(controller);
+    client->addAudioInputProcessorObserver(alsaCtrl);
+    controller = alsaCtrl;
 #endif
 
     auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
