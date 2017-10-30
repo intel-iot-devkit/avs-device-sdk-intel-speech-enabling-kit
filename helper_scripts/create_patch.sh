@@ -31,6 +31,7 @@ function check_error() {
 }
 
 base_name="rp_cpp_patch"
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ "$#" -ne 2 ] ; then
     echo_error "Incorrect number of arguments"
@@ -45,22 +46,27 @@ if [ ! -d "$1" ] ; then
     exit -1
 fi
 
-dest="${base_name}_$2.zip"
+patch_name="${base_name}_$2.bsx"
+tar_name="${base_name}_$2.tar"
+gzip_name="${tar_name}.gz"
 
-if [ -f "$dest" ] ; then
-    echo_error "Patch with name '$dest' already exists"
-    exit -1
-fi
+cd $1
+echo_info "Creating TAR file of the '$1'"
+tar cf ../$tar_name ./*
+check_error "Failed to create the TAR file '$tar_name'"
+cd ..
 
-sdk_config="$1/Integration/AlexaClientSDKConfig.json"
-if [ -f "$sdk_config" ] ; then
-    echo_info "Removing $sdk_config"
-    rm $sdk_config
-    check_error "Failed to remove $sdk_config"
-fi
+echo_info "Compressing '$tar_name'"
+gzip $tar_name
+check_error "Failed to compress the TAR file: $tar_name"
 
-echo_info "Creating patch $dest"
-zip -r $dest $1
-check_error "Failed to create patch $dest"
+echo_info "Creating the patch"
+cat ${script_dir}/decompress.sh $gzip_name > $patch_name 
+check_error "Failed to create the patch"
+chmod +x $patch_name
+
+echo_info "Cleaning up"
+rm $gzip_name
+check_error "Failed to clean up"
 
 echo_info "Done."
