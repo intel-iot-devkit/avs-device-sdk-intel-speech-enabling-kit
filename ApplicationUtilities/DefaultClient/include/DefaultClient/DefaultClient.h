@@ -31,6 +31,7 @@
 #include <AVSCommon/AVS/DialogUXStateAggregator.h>
 #include <AVSCommon/SDKInterfaces/AuthDelegateInterface.h>
 #include <AVSCommon/SDKInterfaces/ConnectionStatusObserverInterface.h>
+#include <AVSCommon/SDKInterfaces/AudioInputProcessorObserverInterface.h>
 #include <AVSCommon/SDKInterfaces/DialogUXStateObserverInterface.h>
 #include <AVSCommon/SDKInterfaces/PlaybackControllerInterface.h>
 #include <AVSCommon/SDKInterfaces/SingleSettingObserverInterface.h>
@@ -160,6 +161,22 @@ public:
     void removeSettingObserver(
         const std::string& key,
         std::shared_ptr<avsCommon::sdkInterfaces::SingleSettingObserverInterface> observer);
+
+    /**
+     * Adds an observer to an audio input processor to be notified on state changes.
+     *
+     * @param observer The audio input processor observer to be added.
+     */
+    void addAudioInputProcessorObserver(
+            std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer);
+
+    /**
+     * Removes an observer to an audio input processor to be notified of on state changes
+     *
+     * @param observer The audio input processor observer to remove.
+     */
+    void removeAudioInputProcessorObserver(
+            std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer);
 
     /**
      * Calls the changeSetting function of Settings object.

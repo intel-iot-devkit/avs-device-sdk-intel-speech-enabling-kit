@@ -400,6 +400,16 @@ void DefaultClient::removeSettingObserver(
     m_settings->removeSingleSettingObserver(key, observer);
 }
 
+void DefaultClient::addAudioInputProcessorObserver(
+        std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer) {
+    m_audioInputProcessor->addObserver(observer);
+}
+
+void DefaultClient::removeAudioInputProcessorObserver(
+        std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer) {
+    m_audioInputProcessor->removeObserver(observer);
+}
+
 void DefaultClient::changeSetting(const std::string& key, const std::string& value) {
     m_settings->changeSetting(key, value);
 }
