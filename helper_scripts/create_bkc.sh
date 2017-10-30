@@ -52,11 +52,6 @@ if [ "$#" -ne 2 ] ; then
     exit -1
 fi
 
-if [ ! -b "$1" ] ; then
-    echo_error "Device \"$1\" does not exist"
-    exit -1
-fi
-
 base_fn="rp_cpp_$2.img"
 zip_fn="${base_fn}.zip"
 
@@ -71,7 +66,15 @@ if [ -f "$zip_fn" ] ; then
 fi
 
 echo_info "Creating image $base_fn"
-dd if=$1 | pv | dd bs=4M of=$base_fn
+if [ "`uname`" == "Darwin" ] ; then
+    dd bs=4m if=$1 | pv | dd of=$base_fn
+else
+    if [ ! -b "$1" ] ; then
+        echo_error "Device \"$1\" does not exist"
+        exit -1
+    fi
+    dd if=$1 | pv | dd bs=4M of=$base_fn
+fi
 check_error "Failed to creating image $base_fn"
 
 echo_info "Compressing $base_fn"
