@@ -18,8 +18,9 @@
 #include "SampleApp/KeywordObserver.h"
 #include "SampleApp/ConnectionObserver.h"
 #include "SampleApp/SampleApplication.h"
-#include "SampleApp/StartPortAudioStreamObserver.h"
-#include "SampleApp/StopPortAudioStreamObserver.h"
+// #include "SampleApp/StartPortAudioStreamObserver.h"
+// #include "SampleApp/StopPortAudioStreamObserver.h"
+#include "SampleApp/PortAudioObserver.h"
 #include "SampleApp/ResetAppTimer.h"
 
 #ifdef KWD_KITTAI
@@ -395,10 +396,16 @@ bool SampleApplication::initialize(
     controller = alsaCtrl;
 #endif
 
-    auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
-    if(!startMicObserver) {
+    // auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
+    // if(!startMicObserver) {
+    //     alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
+    //             "Failed to create StartPortAudioStreamObserver!");
+    //     return false;
+    // }
+    auto paObserver = PortAudioObserver::create(micWrapper);
+    if(!paObserver) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-                "Failed to create StartPortAudioStreamObserver!");
+                "Failed to create PortAudioObserver!");
         return false;
     }
 
@@ -406,7 +413,7 @@ bool SampleApplication::initialize(
         sharedDataStream, 
         compatibleAudioFormat, 
         controller, 
-        {startMicObserver, keywordObserver},
+        {paObserver, keywordObserver},
         std::unordered_set<std::shared_ptr<
             alexaClientSDK::avsCommon::sdkInterfaces::KeyWordDetectorStateObserverInterface>>());
     if(!m_keywordDetector) {
@@ -414,16 +421,18 @@ bool SampleApplication::initialize(
         return false;
     }
 
-    m_keywordDetector->addKeyWordObserver(startMicObserver);
+    // m_keywordDetector->addKeyWordObserver(startMicObserver);
+    // m_keywordDetector->addKeyWordObserver(paObserver);
+    client->addAlexaDialogStateObserver(paObserver);
 
-    auto stopMicObserver = StopPortAudioStreamObserver::create(micWrapper);
-    if(!stopMicObserver) {
-        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-                "Failed to create StopPortAudioStreamObserver!");
-        return false;
-    }
+    // auto stopMicObserver = StopPortAudioStreamObserver::create(micWrapper);
+    // if(!stopMicObserver) {
+    //     alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
+    //             "Failed to create StopPortAudioStreamObserver!");
+    //     return false;
+    // }
 
-    client->addAlexaDialogStateObserver(stopMicObserver);
+    // client->addAlexaDialogStateObserver(stopMicObserver);
 #endif
 #ifdef KWD_HARDWARE
     bool startPaStream = false;

@@ -1,8 +1,7 @@
 add_executable(SampleApp 
     main.cpp 
     PortAudioMicrophoneWrapper.cpp 
-    StartPortAudioStreamObserver.cpp
-    StopPortAudioStreamObserver.cpp
+    PortAudioObserver.cpp
     InteractionManager.cpp 
     UserInputManager.cpp
     ConsolePrinter.cpp
