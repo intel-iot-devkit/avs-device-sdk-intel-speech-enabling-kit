@@ -152,7 +152,7 @@ void HardwareKeywordDetector::detectionLoop() {
         }
 
         // Advance the reader to where the writer currently is
-        m_streamReader->seek(0);
+        m_streamReader->seek(0, AudioInputStream::Reader::Reference::BEFORE_WRITER);
         // Get the current index of the reader, which should be at the end
         m_streamIdx = m_streamReader->tell();
 
