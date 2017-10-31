@@ -115,8 +115,12 @@ void AlsaHardwareController::onStateChanged(AipState state) {
                     .d("error_code", snd_strerror(ret)));
         }
         m_isWakeOnVoice = false;
-    } else if(state == AipState::IDLE && !m_isWakeOnVoice) {
-        ACSDK_DEBUG(LX("onStateChanged").d("event", "setWakeOnVoiceMode"));
+    }
+}
+
+void AlsaHardwareController::onDialogUXStateChanged(DialogUXState state) {
+    if(state == DialogUXState::IDLE && !m_isWakeOnVoice) {
+        ACSDK_DEBUG(LX("onDialogUXStateChanged").d("event", "setWakeOnVoiceMode"));
         int ret = 0;
         // Create handle to the streaming mode control device 
         snd_ctl_elem_value_t* control;
@@ -133,7 +137,6 @@ void AlsaHardwareController::onStateChanged(AipState state) {
         }
         m_isWakeOnVoice = true;
     }
-    m_currentAipState = state;
 }
 
 AlsaHardwareController::AlsaHardwareController(std::string name, std::string keyword) :

@@ -15,6 +15,7 @@
 #include <alsa/asoundlib.h>
 
 #include "AVSCommon/SDKInterfaces/AudioInputProcessorObserverInterface.h"
+#include "AVSCommon/SDKInterfaces/DialogUXStateObserverInterface.h"
 
 #include "HardwareController/AbstractHardwareController.h"
 
@@ -24,9 +25,18 @@ namespace kwd {
 using namespace avsCommon;
 using namespace avsCommon::sdkInterfaces;
 
+/**
+ * Hardware controller for an ALSA audio driver.
+ *
+ * IMPORTANT: It is very important to note, that this must be added to the
+ * list of observers for the Dialog UX states AFTER the observer which operates
+ * the microphone. Otherwise, errors will occur as a result of the audio device
+ * being unavailable when the controller tries to put it back into the WoV mode.
+ */
 class AlsaHardwareController 
     : public AbstractHardwareController
-    , public AudioInputProcessorObserverInterface {
+    , public AudioInputProcessorObserverInterface
+    , public DialogUXStateObserverInterface {
 public:
     /// Alias to the @c AudioInputProcessorObserverInterface::state for brevity
     using AipState = AudioInputProcessorObserverInterface::State;
@@ -55,6 +65,16 @@ public:
     /// @name AudioInputProcessorObserverInterface Functions
     /// @{
     void onStateChanged(AipState state) override;
+    /// @}
+    
+    /// @name DialogUXStateObserverInterface Functions
+    /// @{
+    /**
+     * Callback for when the UX state changes.
+     *
+     * @param newState - The new state of the dialog
+     */
+    void onDialogUXStateChanged(DialogUXState newState) override;
     /// @}
     
     /**
@@ -86,9 +106,6 @@ private:
 
     /// Handle to the ALSA control device
     snd_ctl_t* m_ctl;
-
-    /// Current AIP state
-    AipState m_currentAipState;
 
     /// Flags for checking if the device is in the WoV state
     std::atomic<bool> m_isWakeOnVoice;

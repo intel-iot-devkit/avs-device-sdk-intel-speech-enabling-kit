@@ -396,12 +396,6 @@ bool SampleApplication::initialize(
     controller = alsaCtrl;
 #endif
 
-    // auto startMicObserver = StartPortAudioStreamObserver::create(micWrapper);
-    // if(!startMicObserver) {
-    //     alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-    //             "Failed to create StartPortAudioStreamObserver!");
-    //     return false;
-    // }
     auto paObserver = PortAudioObserver::create(micWrapper);
     if(!paObserver) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
@@ -421,18 +415,11 @@ bool SampleApplication::initialize(
         return false;
     }
 
-    // m_keywordDetector->addKeyWordObserver(startMicObserver);
-    // m_keywordDetector->addKeyWordObserver(paObserver);
     client->addAlexaDialogStateObserver(paObserver);
+#ifdef ALSA_HW_CTRL
+    client->addAlexaDialogStateObserver(alsaCtrl);
+#endif
 
-    // auto stopMicObserver = StopPortAudioStreamObserver::create(micWrapper);
-    // if(!stopMicObserver) {
-    //     alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-    //             "Failed to create StopPortAudioStreamObserver!");
-    //     return false;
-    // }
-
-    // client->addAlexaDialogStateObserver(stopMicObserver);
 #endif
 #ifdef KWD_HARDWARE
     bool startPaStream = false;

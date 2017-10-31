@@ -57,7 +57,7 @@ public:
      *
      * @param newState - The new state of the dialog
      */
-    void onDialogUXStateChanged(DialogUXState newState);
+    void onDialogUXStateChanged(DialogUXState newState) override;
     /// @}
 
     /**
