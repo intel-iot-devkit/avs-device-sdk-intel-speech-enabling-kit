@@ -28,6 +28,19 @@ static const int NUM_OUTPUT_CHANNELS = 0;
 static const double SAMPLE_RATE = 16000;
 static const unsigned long PREFERRED_SAMPLES_PER_CALLBACK = paFramesPerBufferUnspecified;
 
+/**
+ * Simple helper method for printing a message using the @c ConsolePrinter with
+ * printing a PortAudio error.
+ *
+ * @param err PortAudio error
+ * @param msg Message to print before printing the error PortAudio message
+ */
+void printPaError(PaError err, std::string msg) {
+    std::ostringstream os;
+    os << msg << " : [" << err << "] " << Pa_GetErrorText(err);
+    ConsolePrinter::simplePrint(os.str());
+}
+
 std::unique_ptr<PortAudioMicrophoneWrapper> PortAudioMicrophoneWrapper::create(
     std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer,
     std::shared_ptr<AudioInputStream> stream) {
@@ -64,15 +77,8 @@ bool PortAudioMicrophoneWrapper::initialize() {
     }
     
 #ifdef KWD_HARDWARE
-    // openStream();
     return true;
 #else
-    // PaError err;
-    // err = Pa_Initialize();
-    // if (err != paNoError) {
-    //     ConsolePrinter::simplePrint("Failed to initialize PortAudio");
-    //     return false;
-    // }
     return openStream();
 #endif
 }
@@ -80,12 +86,12 @@ bool PortAudioMicrophoneWrapper::initialize() {
 bool PortAudioMicrophoneWrapper::closeStream() {
     PaError err = Pa_CloseStream(m_paStream);
     if(err != paNoError) {
-        ConsolePrinter::simplePrint("Failed to close PortAudio default stream");
+        printPaError(err, "Failed to close PortAudio default stream");
         return false;
     }
     err = Pa_Terminate();
     if(err != paNoError) {
-        ConsolePrinter::simplePrint("Failed to terminate PortAudio");
+        printPaError(err, "Failed to terminate PortAudio");
         return false;
     }
     return true;
@@ -95,7 +101,7 @@ bool PortAudioMicrophoneWrapper::openStream() {
     PaError err;
     err = Pa_Initialize();
     if (err != paNoError) {
-        ConsolePrinter::simplePrint("Failed to initialize PortAudio");
+        printPaError(err, "Failed to initialize PortAudio");
         return false;
     }
 
@@ -110,7 +116,7 @@ bool PortAudioMicrophoneWrapper::openStream() {
         this);
 
     if (err != paNoError) {
-        ConsolePrinter::simplePrint("Failed to open PortAudio default stream");
+        printPaError(err, "Failed to open PortAudio default stream");
         return false;
     }
     return true;
@@ -125,7 +131,7 @@ bool PortAudioMicrophoneWrapper::startStreamingMicrophoneData() {
 #endif
     PaError err = Pa_StartStream(m_paStream);
     if (err != paNoError) {
-        ConsolePrinter::simplePrint("Failed to start PortAudio stream");
+        printPaError(err, "Failed to start PortAudio stream");
         return false;
     }
     m_streaming = true;
@@ -138,7 +144,7 @@ bool PortAudioMicrophoneWrapper::stopStreamingMicrophoneData() {
         return true;
     PaError err = Pa_StopStream(m_paStream);
     if (err != paNoError) {
-        ConsolePrinter::simplePrint("Failed to stop PortAudio stream");
+        printPaError(err, "Failed to stop PortAudio stream");
         return false;
     }
     m_streaming = false;
