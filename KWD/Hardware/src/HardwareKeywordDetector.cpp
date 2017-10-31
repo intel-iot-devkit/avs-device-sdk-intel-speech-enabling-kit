@@ -111,7 +111,7 @@ bool HardwareKeywordDetector::init() {
 
     m_isShuttingDown = false;
     m_detectionThread = std::thread(&HardwareKeywordDetector::detectionLoop, this);
-    m_readStreamThread = std::thread(&HardwareKeywordDetector::readStreamLoop, this);
+    // m_readStreamThread = std::thread(&HardwareKeywordDetector::readStreamLoop, this);
     return true;
 }
 
@@ -151,12 +151,18 @@ void HardwareKeywordDetector::detectionLoop() {
             continue;
         }
 
+        // Advance the reader to where the writer currently is
+        m_streamReader->seek(0);
+        // Get the current index of the reader, which should be at the end
+        m_streamIdx = m_streamReader->tell();
+
         int offset = (m_streamIdx == 0) ? 0 : SAMPLE_OFFSET;
         auto begin = m_streamIdx + detection->getBegin() - offset;
         auto end = m_streamIdx + detection->getEnd() - offset;
 
         ACSDK_DEBUG(LX("detectionLoop")
                 .d("event", "keywordDetection")
+                .d("sds_offset", m_streamIdx)
                 .d("begin", begin)
                 .d("end", end));
 

@@ -142,7 +142,8 @@ private:
     std::atomic<bool> m_isShuttingDown;
 
     /// Current index of the reader in the SDS
-    std::atomic<int> m_streamIdx;
+    // std::atomic<int> m_streamIdx;
+    int m_streamIdx;
 
     /**
      * Internal thread that waits for a signal from the hardware that the
