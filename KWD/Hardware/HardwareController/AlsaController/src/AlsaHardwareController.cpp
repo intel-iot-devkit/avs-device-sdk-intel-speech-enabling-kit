@@ -140,7 +140,7 @@ void AlsaHardwareController::onDialogUXStateChanged(DialogUXState state) {
 }
 
 AlsaHardwareController::AlsaHardwareController(std::string name, std::string keyword) :
-    m_name(name), m_keyword(keyword), m_ctl(NULL), m_isWakeOnVoice(true)
+    m_name(name), m_keyword(keyword), m_ctl(NULL), m_isWakeOnVoice(false)
 {}
 
 AlsaHardwareController::~AlsaHardwareController() {
@@ -194,17 +194,6 @@ bool AlsaHardwareController::init() {
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("writeFailed")
                 .d("reason", "dspLoadFailed")
-                .d("error_code", snd_strerror(ret)));
-        return false;
-    }
-
-    // Set the driver to WoV mode
-    ACSDK_DEBUG(LX("setWoV").d("message", "Setting ALSA driver to WoV"));
-    snd_ctl_elem_value_set_name(control, CTL_CAP_STREAM_MODE);
-    snd_ctl_elem_value_set_integer(control, 0, KP_WAKE_ON_VOICE);
-    if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
-        ACSDK_ERROR(LX("writeFailed")
-                .d("reason", "setWakeOnVoiceModeFailed")
                 .d("error_code", snd_strerror(ret)));
         return false;
     }
