@@ -115,7 +115,7 @@ void AlsaHardwareController::onStateChanged(AipState state) {
                     .d("error_code", snd_strerror(ret)));
         }
         m_isWakeOnVoice = false;
-    } else if(m_currentAipState != AipState::EXPECTING_SPEECH && !m_isWakeOnVoice) {
+    } else if(state == AipState::IDLE && !m_isWakeOnVoice) {
         ACSDK_DEBUG(LX("onStateChanged").d("event", "setWakeOnVoiceMode"));
         int ret = 0;
         // Create handle to the streaming mode control device 
