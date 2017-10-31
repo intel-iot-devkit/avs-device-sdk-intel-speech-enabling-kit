@@ -31,8 +31,8 @@ static const std::string TAG("AlsaHardwareController");
 std::shared_ptr<AlsaHardwareController> AlsaHardwareController::create(
         std::string name, std::string keyword) 
 {
-    std::shared_ptr<AlsaHardwareController> ctrl = std::make_shared<AlsaHardwareController>(
-            AlsaHardwareController(name, keyword));
+    std::shared_ptr<AlsaHardwareController> ctrl = std::shared_ptr<AlsaHardwareController>(
+            new AlsaHardwareController(name, keyword));
 
     if(!ctrl->init()) {
         ACSDK_ERROR(LX("createFailed").d("reason", "initHardwareControllerFailed"));
@@ -71,7 +71,11 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     }
 
     // Get reference to the KP detect control device
-    snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_DETECT_NAME);
+    snd_ctl_elem_value_t* control;
+    snd_ctl_elem_value_alloca(&control);
+    snd_ctl_elem_value_set_interface(control, SND_CTL_ELEM_IFACE_MIXER);
+    snd_ctl_elem_value_set_name(control, CTL_DETECT_NAME);
+    snd_ctl_elem_value_set_index(control, 0);
     
     if((ret = snd_ctl_elem_read(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("readFailed")
@@ -98,7 +102,11 @@ void AlsaHardwareController::onStateChanged(AipState state) {
         ACSDK_DEBUG(LX("onStateChanged").d("event", "setCaptureStremingMode"));
         int ret = 0;
         // Create handle to the streaming mode control device 
-        snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_CAP_STREAM_MODE);
+        snd_ctl_elem_value_t* control;
+        snd_ctl_elem_value_alloca(&control);
+        snd_ctl_elem_value_set_interface(control, SND_CTL_ELEM_IFACE_MIXER);
+        snd_ctl_elem_value_set_name(control, CTL_CAP_STREAM_MODE);
+        snd_ctl_elem_value_set_index(control, 0);
         // Set mode to streaming mode
         snd_ctl_elem_value_set_integer(control, 0, KP_CAPTURE_STREAMING);
         if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
@@ -106,24 +114,30 @@ void AlsaHardwareController::onStateChanged(AipState state) {
                     .d("reason", "setCaptureStreamModeFailed")
                     .d("error_code", snd_strerror(ret)));
         }
-    } else if(m_currentAipState == AipState::EXPECTING_SPEECH) {
+        m_isWakeOnVoice = false;
+    } else if(m_currentAipState != AipState::EXPECTING_SPEECH && !m_isWakeOnVoice) {
         ACSDK_DEBUG(LX("onStateChanged").d("event", "setWakeOnVoiceMode"));
         int ret = 0;
         // Create handle to the streaming mode control device 
-        snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_CAP_STREAM_MODE);
+        snd_ctl_elem_value_t* control;
+        snd_ctl_elem_value_alloca(&control);
+        snd_ctl_elem_value_set_interface(control, SND_CTL_ELEM_IFACE_MIXER);
+        snd_ctl_elem_value_set_name(control, CTL_CAP_STREAM_MODE);
+        snd_ctl_elem_value_set_index(control, 0);
         // Set mode to streaming mode
         snd_ctl_elem_value_set_integer(control, 0, KP_WAKE_ON_VOICE);
         if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
             ACSDK_ERROR(LX("writeFailed")
-                    .d("reason", "setWakeOnVoiceModeFaile")
+                    .d("reason", "setWakeOnVoiceModeFailed")
                     .d("error_code", snd_strerror(ret)));
         }
+        m_isWakeOnVoice = true;
     }
     m_currentAipState = state;
 }
 
 AlsaHardwareController::AlsaHardwareController(std::string name, std::string keyword) :
-    m_name(name), m_keyword(keyword), m_ctl(NULL)
+    m_name(name), m_keyword(keyword), m_ctl(NULL), m_isWakeOnVoice(true)
 {}
 
 AlsaHardwareController::~AlsaHardwareController() {
@@ -153,7 +167,11 @@ bool AlsaHardwareController::init() {
     }
 
     // Create handle to the DSP topology control device
-    snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_DSP_TOPO);
+    snd_ctl_elem_value_t* control;
+    snd_ctl_elem_value_alloca(&control);
+    snd_ctl_elem_value_set_interface(control, SND_CTL_ELEM_IFACE_MIXER);
+    snd_ctl_elem_value_set_name(control, CTL_DSP_TOPO);
+    snd_ctl_elem_value_set_index(control, 0);
     
     // Unload the DSP's topology
     ACSDK_DEBUG(LX("dspUnload")
@@ -177,18 +195,18 @@ bool AlsaHardwareController::init() {
         return false;
     }
 
-    return true;
-}
+    // Set the driver to WoV mode
+    ACSDK_DEBUG(LX("setWoV").d("message", "Setting ALSA driver to WoV"));
+    snd_ctl_elem_value_set_name(control, CTL_CAP_STREAM_MODE);
+    snd_ctl_elem_value_set_integer(control, 0, KP_WAKE_ON_VOICE);
+    if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
+        ACSDK_ERROR(LX("writeFailed")
+                .d("reason", "setWakeOnVoiceModeFailed")
+                .d("error_code", snd_strerror(ret)));
+        return false;
+    }
 
-snd_ctl_elem_value_t* AlsaHardwareController::createSndMixerCtl(
-        const char* name, int index) 
-{
-    snd_ctl_elem_value_t* control;
-    snd_ctl_elem_value_alloca(&control);
-    snd_ctl_elem_value_set_interface(control, SND_CTL_ELEM_IFACE_MIXER);
-    snd_ctl_elem_value_set_name(control, name);
-    snd_ctl_elem_value_set_index(control, index);
-    return control;
+    return true;
 }
 
 } // kwd

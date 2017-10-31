@@ -10,6 +10,7 @@
 #include <chrono>
 #include <string>
 #include <memory>
+#include <atomic>
 
 #include <alsa/asoundlib.h>
 
@@ -77,8 +78,6 @@ private:
      */
     bool init();
 
-    snd_ctl_elem_value_t* createSndMixerCtl(const char* name, int index=0);
-
     /// Name of the ALSA controller to connect to
     std::string m_name;
 
@@ -90,6 +89,9 @@ private:
 
     /// Current AIP state
     AipState m_currentAipState;
+
+    /// Flags for checking if the device is in the WoV state
+    std::atomic<bool> m_isWakeOnVoice;
 };
 
 } // kwd
