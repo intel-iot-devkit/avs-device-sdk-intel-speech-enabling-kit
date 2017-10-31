@@ -156,6 +156,8 @@ bool AlsaHardwareController::init() {
     snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_DSP_TOPO);
     
     // Unload the DSP's topology
+    ACSDK_DEBUG9(LX("dspUnload")
+            .d("message", "Unloading DSP topology"));
     snd_ctl_elem_value_set_integer(control, 0, DSP_UNLOAD);
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("writeFailed")
@@ -165,6 +167,8 @@ bool AlsaHardwareController::init() {
     }
 
     // Load the DSP's topology
+    ACSDK_DEBUG9(LX("dspLoad")
+            .d("message", "Loading DSP topology"));
     snd_ctl_elem_value_set_integer(control, 0, DSP_LOAD);
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("writeFailed")
