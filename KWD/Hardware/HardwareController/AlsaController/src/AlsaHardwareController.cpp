@@ -57,7 +57,7 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
         // < 0 indicates an error occurred
         ACSDK_ERROR(LX("readFailed")
                 .d("reason", "pollFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         return nullptr;
     }
 
@@ -66,7 +66,7 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     if(snd_ctl_read(m_ctl, event) < 0) {
         ACSDK_ERROR(LX("readFailed")
                 .d("reason", "sndReadFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         return nullptr;
     }
 
@@ -76,7 +76,7 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     if((ret = snd_ctl_elem_read(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("readFailed")
                 .d("reason", "sndCtrlElemReadFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         // Freeing control elem value
         snd_ctl_elem_value_free(control);
         return nullptr;
@@ -106,7 +106,7 @@ void AlsaHardwareController::onStateChanged(AipState state) {
         if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
             ACSDK_ERROR(LX("writeFailed")
                     .d("reason", "setCaptureStreamModeFailed")
-                    .d("error_code", std::to_string(ret)));
+                    .d("error_code", snd_strerror(ret)));
             // Freeing control elem value
             snd_ctl_elem_value_free(control);
         }
@@ -120,7 +120,7 @@ void AlsaHardwareController::onStateChanged(AipState state) {
         if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
             ACSDK_ERROR(LX("writeFailed")
                     .d("reason", "setWakeOnVoiceModeFaile")
-                    .d("error_code", std::to_string(ret)));
+                    .d("error_code", snd_strerror(ret)));
             // Freeing control elem value
             snd_ctl_elem_value_free(control);
         }
@@ -146,7 +146,7 @@ bool AlsaHardwareController::init() {
     if((ret = snd_ctl_open(&m_ctl, m_name.c_str(), SND_CTL_READONLY)) < 0) {
         ACSDK_ERROR(LX("initFailed")
                 .d("reason", "openAlsaCtrlFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         return false;
     }
 
@@ -154,7 +154,7 @@ bool AlsaHardwareController::init() {
     if((ret = snd_ctl_subscribe_events(m_ctl, 1)) < 0) {
         ACSDK_ERROR(LX("initFailed")
                 .d("reason", "alsaCtrlSubscribeFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         return false;
     }
 
@@ -166,7 +166,7 @@ bool AlsaHardwareController::init() {
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("writeFailed")
                 .d("reason", "dspUnloadFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         // Freeing control elem value
         snd_ctl_elem_value_free(control);
         return false;
@@ -177,7 +177,7 @@ bool AlsaHardwareController::init() {
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
         ACSDK_ERROR(LX("writeFailed")
                 .d("reason", "dspLoadFailed")
-                .d("error_code", std::to_string(ret)));
+                .d("error_code", snd_strerror(ret)));
         // Freeing control elem value
         snd_ctl_elem_value_free(control);
         return false;
