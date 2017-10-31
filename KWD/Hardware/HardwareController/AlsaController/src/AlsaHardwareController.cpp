@@ -85,7 +85,7 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
     
     auto detection = KeywordDetection::create(payload[0], payload[1], m_keyword);
 
-    ACSDK_DEBUG9(LX("read")
+    ACSDK_DEBUG(LX("read")
             .d("event", "keywordDetection")
             .d("begin", payload[0])
             .d("end", payload[1]));
@@ -95,7 +95,7 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
 
 void AlsaHardwareController::onStateChanged(AipState state) {
     if(state == AipState::EXPECTING_SPEECH) {
-        ACSDK_DEBUG9(LX("onStateChanged").d("event", "setCaptureStremingMode"));
+        ACSDK_DEBUG(LX("onStateChanged").d("event", "setCaptureStremingMode"));
         int ret = 0;
         // Create handle to the streaming mode control device 
         snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_CAP_STREAM_MODE);
@@ -107,7 +107,7 @@ void AlsaHardwareController::onStateChanged(AipState state) {
                     .d("error_code", snd_strerror(ret)));
         }
     } else if(m_currentAipState == AipState::EXPECTING_SPEECH) {
-        ACSDK_DEBUG9(LX("onStateChanged").d("event", "setWakeOnVoiceMode"));
+        ACSDK_DEBUG(LX("onStateChanged").d("event", "setWakeOnVoiceMode"));
         int ret = 0;
         // Create handle to the streaming mode control device 
         snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_CAP_STREAM_MODE);
@@ -156,7 +156,7 @@ bool AlsaHardwareController::init() {
     snd_ctl_elem_value_t* control = createSndMixerCtl(CTL_DSP_TOPO);
     
     // Unload the DSP's topology
-    ACSDK_DEBUG9(LX("dspUnload")
+    ACSDK_DEBUG(LX("dspUnload")
             .d("message", "Unloading DSP topology"));
     snd_ctl_elem_value_set_integer(control, 0, DSP_UNLOAD);
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
@@ -167,7 +167,7 @@ bool AlsaHardwareController::init() {
     }
 
     // Load the DSP's topology
-    ACSDK_DEBUG9(LX("dspLoad")
+    ACSDK_DEBUG(LX("dspLoad")
             .d("message", "Loading DSP topology"));
     snd_ctl_elem_value_set_integer(control, 0, DSP_LOAD);
     if((ret = snd_ctl_elem_write(m_ctl, control)) != 0) {
