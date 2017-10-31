@@ -18,7 +18,7 @@ static const std::string TAG("AlsaHardwareController");
 // ALSA control device name for receving keyphrase detection events
 #define CTL_DETECT_NAME "KP Detect Control"
 #define CTL_CAP_STREAM_MODE "Capture Stream mode"
-#define CTL_DSP_TOPO "DSP load topology control"
+#define CTL_DSP_TOPO "DSP Load Topology Control"
 
 // DSP unload/load values
 #define DSP_UNLOAD 0
@@ -77,8 +77,6 @@ std::unique_ptr<KeywordDetection> AlsaHardwareController::read(
         ACSDK_ERROR(LX("readFailed")
                 .d("reason", "sndCtrlElemReadFailed")
                 .d("error_code", snd_strerror(ret)));
-        // Freeing control elem value
-        snd_ctl_elem_value_free(control);
         return nullptr;
     }
 
@@ -107,8 +105,6 @@ void AlsaHardwareController::onStateChanged(AipState state) {
             ACSDK_ERROR(LX("writeFailed")
                     .d("reason", "setCaptureStreamModeFailed")
                     .d("error_code", snd_strerror(ret)));
-            // Freeing control elem value
-            snd_ctl_elem_value_free(control);
         }
     } else if(m_currentAipState == AipState::EXPECTING_SPEECH) {
         ACSDK_DEBUG9(LX("onStateChanged").d("event", "setWakeOnVoiceMode"));
@@ -121,8 +117,6 @@ void AlsaHardwareController::onStateChanged(AipState state) {
             ACSDK_ERROR(LX("writeFailed")
                     .d("reason", "setWakeOnVoiceModeFaile")
                     .d("error_code", snd_strerror(ret)));
-            // Freeing control elem value
-            snd_ctl_elem_value_free(control);
         }
     }
     m_currentAipState = state;
@@ -167,8 +161,6 @@ bool AlsaHardwareController::init() {
         ACSDK_ERROR(LX("writeFailed")
                 .d("reason", "dspUnloadFailed")
                 .d("error_code", snd_strerror(ret)));
-        // Freeing control elem value
-        snd_ctl_elem_value_free(control);
         return false;
     }
 
@@ -178,12 +170,9 @@ bool AlsaHardwareController::init() {
         ACSDK_ERROR(LX("writeFailed")
                 .d("reason", "dspLoadFailed")
                 .d("error_code", snd_strerror(ret)));
-        // Freeing control elem value
-        snd_ctl_elem_value_free(control);
         return false;
     }
 
-    snd_ctl_elem_value_free(control);
     return true;
 }
 
