@@ -60,12 +60,16 @@ void PortAudioObserver::onDialogUXStateChanged(DialogUXState newState) {
             ACSDK_ERROR(LX("onDialogUXStateChanged")
                     .d("reason", "stopStreamFailed"));
         }
-    } else if(newState == DialogUXState::LISTENING && !m_micWrapper->isStreaming()) {
+    }
+}
+
+void PortAudioObserver::onStateChanged(AipState state) {
+    if(state == AipState::EXPECTING_SPEECH && !m_micWrapper->isStreaming()) {
         // If the dialog has reached the LISTENING state and the microphone is
         // not currently streaming audio, then we have reached the EXPECTING_SPEECH
         // state, and should re-enable the audio streaming from the microphone
-        ACSDK_DEBUG(LX("onDialogUXStateChanged")
-                .d("event", "Expecting Speech - starting microphone stream"));
+        ACSDK_DEBUG(LX("onStateChanged")
+                .d("event", "EXPECTING_SPEECH"));
         if(!m_micWrapper->startStreamingMicrophoneData()) {
             ACSDK_ERROR(LX("onDialogUXStateChanged")
                     .d("reason", "startStreamFailed"));

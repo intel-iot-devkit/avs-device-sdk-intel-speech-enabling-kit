@@ -440,6 +440,9 @@ bool SampleApplication::initialize(
         return false;
     }
 
+    // Add the PortAudioObserver to the AudioInputProcessor observers
+    client->addAudioInputProcessorObserver(paObserver);
+
     m_keywordDetector = kwd::HardwareKeywordDetector::create(
         sharedDataStream, 
         compatibleAudioFormat, 
@@ -489,9 +492,6 @@ bool SampleApplication::initialize(
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create UserInputManager!");
         return false;
     }
-
-    // auto resetTimer = ResetAppTimer::create(client, RESET_TIMEOUT);
-    // client->addAlexaDialogStateObserver(resetTimer);
 
     return true;
 }

@@ -11,6 +11,7 @@
 
 #include <AVSCommon/SDKInterfaces/KeyWordObserverInterface.h>
 #include <AVSCommon/SDKInterfaces/DialogUXStateObserverInterface.h>
+#include <AVSCommon/SDKInterfaces/AudioInputProcessorObserverInterface.h>
 #include <AVSCommon/AVS/AudioInputStream.h>
 
 #include "SampleApp/PortAudioMicrophoneWrapper.h"
@@ -24,11 +25,19 @@ using namespace avsCommon::sdkInterfaces;
 /**
  * Observer which interacts with PortAudio based on keyword detections, and the
  * changing of the dialog state.
+ *
+ * IMPORTANT: This observer must be added to the @c AudioInputProcessor observers
+ * AFTER the @c AlsaHardwareController is added, so that the correct sequence of
+ * events for opening the microphone occur.
  */
 class PortAudioObserver 
     : public KeyWordObserverInterface
-    , public DialogUXStateObserverInterface {
+    , public DialogUXStateObserverInterface
+    , public AudioInputProcessorObserverInterface {
 public:
+    /// Alias to the @c AudioInputProcessorObserverInterface::state for brevity
+    using AipState = AudioInputProcessorObserverInterface::State;
+
     /**
      * Creates a new pointer to a @c StartPortAudioStreamObserver.
      *
@@ -58,6 +67,16 @@ public:
      * @param newState - The new state of the dialog
      */
     void onDialogUXStateChanged(DialogUXState newState) override;
+    /// @}
+    
+    /// @name AudioInputProcessorObserverInterface Functions
+    /// @{
+    /**
+     * Callback for when @c AudioInputProcessor state changes.
+     *
+     * @param state - The new state of the @c AudioInputProcessor
+     */
+    void onStateChanged(AipState state) override;
     /// @}
 
     /**
