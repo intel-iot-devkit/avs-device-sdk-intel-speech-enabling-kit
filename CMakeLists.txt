@@ -26,7 +26,6 @@ add_subdirectory("CapabilityAgents")
 add_subdirectory("Integration")
 add_subdirectory("ApplicationUtilities")
 add_subdirectory("SampleApp")
-add_subdirectory("StressTesterApp")
 add_subdirectory("Storage")
 add_subdirectory("doc")
 
