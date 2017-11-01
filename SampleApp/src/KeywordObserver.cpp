@@ -15,15 +15,12 @@
  * permissions and limitations under the License.
  */
 
-#include "AVSCommon/Utils/TestLogger/TestLogger.h"
 #include "SampleApp/KeywordObserver.h"
 
 #define TAG "KeywordObserver"
 
 namespace alexaClientSDK {
 namespace sampleApp {
-
-using namespace alexaClientSDK::avsCommon::utils::testLogger;
 
 KeywordObserver::KeywordObserver(
     std::shared_ptr<defaultClient::DefaultClient> client,
@@ -37,7 +34,6 @@ void KeywordObserver::onKeyWordDetected(
     std::string keyword,
     avsCommon::avs::AudioInputStream::Index beginIndex,
     avsCommon::avs::AudioInputStream::Index endIndex) {
-    Log::info(TAG, "Keyword Detected");
     if (endIndex != avsCommon::sdkInterfaces::KeyWordObserverInterface::UNSPECIFIED_INDEX &&
         beginIndex == avsCommon::sdkInterfaces::KeyWordObserverInterface::UNSPECIFIED_INDEX) {
         if (m_client) {
@@ -47,7 +43,6 @@ void KeywordObserver::onKeyWordDetected(
         endIndex != avsCommon::sdkInterfaces::KeyWordObserverInterface::UNSPECIFIED_INDEX &&
         beginIndex != avsCommon::sdkInterfaces::KeyWordObserverInterface::UNSPECIFIED_INDEX) {
         if (m_client) {
-            std::cout << "KeywordObserver: beginIndex = " << beginIndex << ", endIndex = " << endIndex << std::endl;
             m_client->notifyOfWakeWord(m_audioProvider, beginIndex, endIndex, keyword);
         }
     }
