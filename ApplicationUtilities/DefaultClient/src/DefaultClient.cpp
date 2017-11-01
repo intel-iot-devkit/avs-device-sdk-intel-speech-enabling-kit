@@ -107,7 +107,7 @@ bool DefaultClient::initialize(
         return false;
     }
 
-    m_dialogUXStateAggregator = std::make_shared<avsCommon::avs::DialogUXStateAggregator>(std::chrono::seconds{2});
+    m_dialogUXStateAggregator = std::make_shared<avsCommon::avs::DialogUXStateAggregator>();
 
     for (auto observer : alexaDialogStateObservers) {
         m_dialogUXStateAggregator->addObserver(observer);
