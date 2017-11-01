@@ -28,6 +28,7 @@ InteractionManager::InteractionManager(
     capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider wakeWordAudioProvider,
     bool startPaStream) :
+        RequiresShutdown{"InteractionManager"},
         m_client{client},
         m_micWrapper{micWrapper},
         m_userInterface{userInterface},
@@ -35,12 +36,15 @@ InteractionManager::InteractionManager(
         m_tapToTalkAudioProvider{tapToTalkAudioProvider},
         m_wakeWordAudioProvider{wakeWordAudioProvider},
         m_isHoldOccurring{false},
-        m_isTapOccurring{false} 
-{ 
+        m_isTapOccurring{false}
+{
     if(startPaStream) {
         m_micWrapper->startStreamingMicrophoneData();
     }
-}
+
+    auto guiRenderer = std::make_shared<GuiRenderer>();
+    m_client->addTemplateRuntimeObserver(guiRenderer);
+};
 
 void InteractionManager::begin() {
     m_executor.submit([this]() {
@@ -105,9 +109,15 @@ void InteractionManager::tap() {
         if (!m_micWrapper->isStreaming()) {
             return;
         }
-        if (m_client->notifyOfTapToTalk(m_tapToTalkAudioProvider).get()) {
-            m_isTapOccurring = true;
+        if (!m_isTapOccurring) {
+            if (m_client->notifyOfTapToTalk(m_tapToTalkAudioProvider).get()) {
+                m_isTapOccurring = true;
+            }
+        } else {
+            m_isTapOccurring = false;
+            m_client->notifyOfTapToTalkEnd();
         }
+
     });
 }
 
@@ -129,6 +139,52 @@ void InteractionManager::playbackNext() {
 
 void InteractionManager::playbackPrevious() {
     m_executor.submit([this]() { m_client->getPlaybackControllerInterface().previousButtonPressed(); });
+}
+
+void InteractionManager::speakerControl() {
+    m_executor.submit([this]() { m_userInterface->printSpeakerControlScreen(); });
+}
+
+void InteractionManager::volumeControl() {
+    m_executor.submit([this]() { m_userInterface->printVolumeControlScreen(); });
+}
+
+void InteractionManager::adjustVolume(avsCommon::sdkInterfaces::SpeakerInterface::Type type, int8_t delta) {
+    m_executor.submit([this, type, delta]() {
+        /*
+         * Group the unmute action as part of the same affordance that caused the volume change, so we don't
+         * send another event. This isn't a requirement by AVS.
+         */
+        std::future<bool> unmuteFuture = m_client->getSpeakerManager()->setMute(type, false, true);
+        if (!unmuteFuture.valid()) {
+            return;
+        }
+        unmuteFuture.get();
+
+        std::future<bool> future = m_client->getSpeakerManager()->adjustVolume(type, delta);
+        if (!future.valid()) {
+            return;
+        }
+        future.get();
+    });
+}
+
+void InteractionManager::setMute(avsCommon::sdkInterfaces::SpeakerInterface::Type type, bool mute) {
+    m_executor.submit([this, type, mute]() {
+        std::future<bool> future = m_client->getSpeakerManager()->setMute(type, mute);
+        future.get();
+    });
+}
+
+void InteractionManager::onDialogUXStateChanged(DialogUXState state) {
+    // reset tap-to-talk state
+    if (DialogUXState::IDLE == state) {
+        m_isTapOccurring = false;
+    }
+}
+
+void InteractionManager::doShutdown() {
+    m_client.reset();
 }
 
 }  // namespace sampleApp

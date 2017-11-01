@@ -278,7 +278,7 @@ void AudioInputProcessor::handleStopCaptureDirective(std::shared_ptr<DirectiveIn
 
 void AudioInputProcessor::handleExpectSpeechDirective(std::shared_ptr<DirectiveInfo> info) {
     int64_t timeout;
-    bool found = avsCommon::utils::json::jsonUtils::lookupInt64Value(
+    bool found = avsCommon::utils::json::jsonUtils::retrieveValue(
         info->directive->getPayload(), "timeoutInMilliseconds", &timeout);
 
     if (!found) {
@@ -745,6 +745,14 @@ void AudioInputProcessor::onExceptionReceived(const std::string& exceptionMessag
 }
 
 void AudioInputProcessor::onSendCompleted(avsCommon::sdkInterfaces::MessageRequestObserverInterface::Status status) {
+    ACSDK_DEBUG(LX("onSendCompleted").d("status", avsCommon::avs::MessageRequest::statusToString(status)));
+
+    if (status == avsCommon::sdkInterfaces::MessageRequestObserverInterface::Status::SUCCESS ||
+        status == avsCommon::sdkInterfaces::MessageRequestObserverInterface::Status::PENDING) {
+        return;
+    }
+    ACSDK_DEBUG(LX("resetState").d("dueToStatus", avsCommon::avs::MessageRequest::statusToString(status)));
+    resetState();
 }
 
 }  // namespace aip
