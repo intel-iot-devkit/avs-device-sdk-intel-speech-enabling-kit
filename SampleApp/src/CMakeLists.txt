@@ -9,7 +9,6 @@ add_executable(SampleApp
     UIManager.cpp
     KeywordObserver.cpp
     ConnectionObserver.cpp
-    ResetAppTimer.cpp
     SampleApplication.cpp)
 
 target_include_directories(SampleApp PUBLIC 

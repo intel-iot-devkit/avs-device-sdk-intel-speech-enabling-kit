@@ -19,7 +19,6 @@
 #include "SampleApp/ConnectionObserver.h"
 #include "SampleApp/SampleApplication.h"
 #include "SampleApp/PortAudioObserver.h"
-#include "SampleApp/ResetAppTimer.h"
 
 #ifdef KWD_KITTAI
 #include <KittAi/KittAiKeyWordDetector.h>
