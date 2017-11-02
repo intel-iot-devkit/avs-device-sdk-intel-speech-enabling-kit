@@ -623,6 +623,10 @@ void SpeechSynthesizer::executePlaybackError(const avsCommon::utils::mediaPlayer
     sendExceptionEncounteredAndReportFailed(m_currentInfo, avsCommon::avs::ExceptionErrorType::INTERNAL_ERROR, error);
     resetCurrentInfo();
     resetMediaSourceId();
+    {
+        std::lock_guard<std::mutex> lock(m_speakInfoQueueMutex);
+        m_speakInfoQueue.clear();
+    }
 }
 
 std::string SpeechSynthesizer::buildState(std::string& token, int64_t offsetInMilliseconds) const {
