@@ -8,6 +8,7 @@
 #define ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_PA_OBSERVER_H_
 
 #include <memory>
+#include <atomic>
 
 #include <AVSCommon/SDKInterfaces/KeyWordObserverInterface.h>
 #include <AVSCommon/SDKInterfaces/DialogUXStateObserverInterface.h>
@@ -95,6 +96,9 @@ private:
     
     /// Handle to the port audio wrapper to be able to start the audio stream
     std::shared_ptr<PortAudioMicrophoneWrapper> m_micWrapper;
+
+    /// Flag for if we are expecting speech
+    std::atomic<bool> m_isExpectingSpeech;
 };
 
 }
