@@ -5,3 +5,6 @@
 Integration/AuthDelegate.config
 #macOS specific files
 .DS_Store
+#vim specific files
+**/*.swp
+**/*.swo
