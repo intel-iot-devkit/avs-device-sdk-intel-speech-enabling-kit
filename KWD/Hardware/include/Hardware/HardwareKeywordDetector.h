@@ -66,8 +66,7 @@ public:
         std::shared_ptr<AbstractHardwareController> controller,
         SetKeyWordObserverInterface keyWordObservers,
         SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(250),
-        std::chrono::milliseconds msToPushPerIteration = std::chrono::milliseconds(20));
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(250));
     
     /**
      * Destructor.
@@ -93,8 +92,7 @@ private:
         std::shared_ptr<AbstractHardwareController> controller,
         SetKeyWordObserverInterface keyWordObservers,
         SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-        std::chrono::milliseconds timeout,
-        std::chrono::milliseconds msToPushPerIteration);
+        std::chrono::milliseconds timeout);
 
     /**
      * Initializes the stream and kicks off a thread to poll the hardware for
@@ -106,25 +104,6 @@ private:
 
     /// The main function that polls from the hardware conntroller for kw events
     void detectionLoop();
-
-    /**
-     * The main function that reads data off of the audio stream to be able to
-     * update the internal stream reader offset.
-     */
-    void readStreamLoop();
-
-    /**
-     * Copy of the AbstractKeywordDetector::readFromStream method which removes
-     * unneeded log statement, because for the HardwareKeywordDetector and timeout
-     * in reading from SDS is not a bad thing.
-     */
-    ssize_t readFromSds(
-        std::shared_ptr<avsCommon::avs::AudioInputStream::Reader> reader,
-        std::shared_ptr<avsCommon::avs::AudioInputStream> stream,
-        void* buf,
-        size_t nWords,
-        std::chrono::milliseconds timeout,
-        bool* errorOccurred);
 
     /// The stream of audio data.
     const std::shared_ptr<avsCommon::avs::AudioInputStream> m_stream;
@@ -141,24 +120,11 @@ private:
     /// Indicates whether the internal main loop should keep running.
     std::atomic<bool> m_isShuttingDown;
 
-    /// Current index of the reader in the SDS
-    // std::atomic<int> m_streamIdx;
-    int m_streamIdx;
-
     /**
      * Internal thread that waits for a signal from the hardware that the
      * keyword has been detected.
      */
     std::thread m_detectionThread;
-
-    /**
-     * Inernal thread that reads from the audio stream to update the internal
-     * stream reader index.
-     */
-    std::thread m_readStreamThread;
-
-    /// The max number of samples to push read from the audio stream.
-    const size_t m_maxSamplesPerPush;
 };
 
 } // namespace kwd

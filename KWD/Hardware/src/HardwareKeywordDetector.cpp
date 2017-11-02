@@ -21,12 +21,6 @@ using namespace avsCommon::utils;
 // Logging tag
 static const std::string TAG("HardwareKeywordDetector");
 
-/// The number of hertz per kilohertz.
-static const size_t HERTZ_PER_KILOHERTZ = 1000;
-
-/// The timeout to use for read calls to the SharedDataStream.
-const std::chrono::milliseconds TIMEOUT_FOR_READ_CALLS = std::chrono::milliseconds(1000);
-
 /**
  * Create a LogEntry using this file's TAG and the specified event string.
  *
@@ -40,8 +34,7 @@ std::unique_ptr<HardwareKeywordDetector> HardwareKeywordDetector::create(
     std::shared_ptr<AbstractHardwareController> controller,
     SetKeyWordObserverInterface keyWordObservers,
     SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-    std::chrono::milliseconds timeout,
-    std::chrono::milliseconds msToPushPerIteration)
+    std::chrono::milliseconds timeout)
 {
     // Verify that the given stream is not NULL
     if (!stream) {
@@ -67,7 +60,7 @@ std::unique_ptr<HardwareKeywordDetector> HardwareKeywordDetector::create(
             new HardwareKeywordDetector(
                 stream, audioFormat, controller, keyWordObservers,
                 keyWordDetectorStateObservers, 
-                timeout, msToPushPerIteration));
+                timeout));
 
     if(!detector->init()) {
         ACSDK_ERROR(LX("createFailed").d("reason", "initDetectorFailed"));
@@ -82,9 +75,6 @@ HardwareKeywordDetector::~HardwareKeywordDetector() {
     if(m_detectionThread.joinable()) {
         m_detectionThread.join();
     }
-    if(m_readStreamThread.joinable()) {
-        m_readStreamThread.join();
-    }
 }
 
 HardwareKeywordDetector::HardwareKeywordDetector(
@@ -93,12 +83,9 @@ HardwareKeywordDetector::HardwareKeywordDetector(
     std::shared_ptr<AbstractHardwareController> controller,
     SetKeyWordObserverInterface keyWordObservers,
     SetKeyWordDetectorStateObservers keyWordDetectorStateObservers,
-    std::chrono::milliseconds timeout,
-    std::chrono::milliseconds msToPushPerIteration) :
+    std::chrono::milliseconds timeout) :
         AbstractKeywordDetector(keyWordObservers, keyWordDetectorStateObservers),
-        m_stream{stream}, m_controller{controller}, m_timeout(timeout),
-        m_streamIdx(0), m_maxSamplesPerPush{
-            (audioFormat.sampleRateHz / HERTZ_PER_KILOHERTZ) * msToPushPerIteration.count()}
+        m_stream{stream}, m_controller{controller}, m_timeout(timeout)
 { }
 
 bool HardwareKeywordDetector::init() {
@@ -111,33 +98,12 @@ bool HardwareKeywordDetector::init() {
 
     m_isShuttingDown = false;
     m_detectionThread = std::thread(&HardwareKeywordDetector::detectionLoop, this);
-    // m_readStreamThread = std::thread(&HardwareKeywordDetector::readStreamLoop, this);
     return true;
-}
-
-void HardwareKeywordDetector::readStreamLoop() {
-    uint16_t audioData[m_maxSamplesPerPush];
-    ssize_t wordsRead;
-
-    while(!m_isShuttingDown) {
-        bool didErrorOccur;
-        wordsRead = readFromSds(
-            m_streamReader, m_stream, audioData, m_maxSamplesPerPush, 
-            TIMEOUT_FOR_READ_CALLS, &didErrorOccur);
-        if(didErrorOccur) {
-            ACSDK_ERROR(LX("detectionLoopFailed").d("reason", "readStreamFailed"));
-            break;
-        }
-        if(wordsRead > 0) {
-            m_streamIdx = m_streamReader->tell();
-        }
-    }
-
-    m_streamReader->close();
 }
 
 void HardwareKeywordDetector::detectionLoop() {
     std::unique_ptr<KeywordDetection> detection;
+    int streamIdx = 0;
 
     // Notify the state observers, abd set to ACTIVE
     notifyKeyWordDetectorStateObservers(
@@ -154,15 +120,15 @@ void HardwareKeywordDetector::detectionLoop() {
         // Advance the reader to where the writer currently is
         m_streamReader->seek(0, AudioInputStream::Reader::Reference::BEFORE_WRITER);
         // Get the current index of the reader, which should be at the end
-        m_streamIdx = m_streamReader->tell();
+        streamIdx = m_streamReader->tell();
 
-        int offset = (m_streamIdx == 0) ? 0 : SAMPLE_OFFSET;
-        auto begin = m_streamIdx + detection->getBegin() - offset;
-        auto end = m_streamIdx + detection->getEnd() - offset;
+        int offset = (streamIdx == 0) ? 0 : SAMPLE_OFFSET;
+        auto begin = streamIdx + detection->getBegin() - offset;
+        auto end = streamIdx + detection->getEnd() - offset;
 
         ACSDK_DEBUG(LX("detectionLoop")
                 .d("event", "keywordDetection")
-                .d("sds_offset", m_streamIdx)
+                .d("sds_offset", streamIdx)
                 .d("begin", begin)
                 .d("end", end));
 
@@ -170,58 +136,6 @@ void HardwareKeywordDetector::detectionLoop() {
                 m_stream, detection->getKeyword(),
                 begin, end);
     }
-}
-
-/// Copy of the AbstractKeywordDetector::readFromStream method which removes
-/// unneeded log statement, because for the HardwareKeywordDetector and timeout
-/// in reading from SDS is not a bad thing.
-ssize_t HardwareKeywordDetector::readFromSds(
-    std::shared_ptr<avsCommon::avs::AudioInputStream::Reader> reader,
-    std::shared_ptr<avsCommon::avs::AudioInputStream> stream,
-    void* buf,
-    size_t nWords,
-    std::chrono::milliseconds timeout,
-    bool* errorOccurred) {
-    if (errorOccurred) {
-        *errorOccurred = false;
-    }
-    ssize_t wordsRead = reader->read(buf, nWords, timeout);
-    // Stream has been closed
-    if (wordsRead == 0) {
-        ACSDK_DEBUG(LX("readFromSds").d("event", "streamClosed"));
-        notifyKeyWordDetectorStateObservers(KeyWordDetectorStateObserverInterface::KeyWordDetectorState::STREAM_CLOSED);
-        if (errorOccurred) {
-            *errorOccurred = true;
-        }
-        // This represents some sort of error with the read() call
-    } else if (wordsRead < 0) {
-        switch (wordsRead) {
-            case AudioInputStream::Reader::Error::OVERRUN:
-                ACSDK_ERROR(LX("readFromSdsFailed")
-                                .d("reason", "streamOverrun")
-                                .d("numWordsOverrun",
-                                   std::to_string(
-                                       reader->tell(AudioInputStream::Reader::Reference::BEFORE_WRITER) -
-                                       stream->getDataSize())));
-                reader->seek(0, AudioInputStream::Reader::Reference::BEFORE_WRITER);
-                break;
-            case AudioInputStream::Reader::Error::TIMEDOUT:
-                break;
-            default:
-                // We should never get this since we are using a Blocking Reader.
-                ACSDK_ERROR(LX("readFromSdsFailed")
-                                .d("reason", "unexpectedError")
-                                // Leave as ssize_t to avoid messiness of casting to enum.
-                                .d("error", wordsRead));
-
-                notifyKeyWordDetectorStateObservers(KeyWordDetectorStateObserverInterface::KeyWordDetectorState::ERROR);
-                if (errorOccurred) {
-                    *errorOccurred = true;
-                }
-                break;
-        }
-    }
-    return wordsRead;
 }
 
 } // kwd
