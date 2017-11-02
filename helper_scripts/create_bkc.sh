@@ -65,14 +65,25 @@ if [ -f "$zip_fn" ] ; then
     exit -1
 fi
 
-echo_info "Creating image $base_fn"
 if [ "`uname`" == "Darwin" ] ; then
+    if [ ! -c "$1" ] ; then
+        echo_error "Device \"$1\" does not exist"
+        exit -1
+    fi
+    echo_info "Unmounting '$1'"
+    diskutil unmountDisk $1
+    check_error "Failed to unmount disk '$1'"
+    echo_info "Creating image $base_fn"
     dd bs=4m if=$1 | pv | dd of=$base_fn
 else
     if [ ! -b "$1" ] ; then
         echo_error "Device \"$1\" does not exist"
         exit -1
     fi
+    echo_info "Unmounting '$1'"
+    umount $1
+    check_error "Failed to unmount disk '$1'"
+    echo_info "Creating image $base_fn"
     dd if=$1 | pv | dd bs=4M of=$base_fn
 fi
 check_error "Failed to creating image $base_fn"
