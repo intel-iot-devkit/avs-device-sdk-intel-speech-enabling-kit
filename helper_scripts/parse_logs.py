@@ -94,7 +94,12 @@ class StateTracker:
             times = self.times
             min_time = min(times)
             max_time = max(times)
-            stdev_time = stdev(times)
+            stdev_time = 0
+            try:
+                stdev_time = stdev(times)
+            except Exception:
+                print('-- Failed to process stddev')
+                stdev_time = 0
             median_time = median(times)
             mean_time = mean(times)
 
@@ -111,7 +116,11 @@ class StateTracker:
                 times = self.state_times[k]
                 min_time = min(times)
                 max_time = max(times)
-                stdev_time = stdev(times)
+                try:
+                    stdev_time = stdev(times)
+                except Exception:
+                    print('-- Failed to process stddev')
+                    stdev_time = 0
                 median_time = median(times)
                 mean_time = mean(times)
                 writer.writerow({
@@ -147,7 +156,7 @@ class Results:
     def add_stop_capture(self, ts):
         self.is_listening = False
         if self.stop_capture_times[-1]['end_ts'] is not None:
-            raise RuntimeError('Stop capture without listening state change..')
+            print('-- ERROR: Stop capture without listening state change..')
         self.stop_capture_times[-1]['end_ts'] = ts
 
     def add_audio_input_state_change(self, ts, from_state, to_state):
