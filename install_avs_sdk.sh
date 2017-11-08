@@ -1,9 +1,10 @@
 #!/bin/bash
 
-GIT_REPO_URL=""
+GIT_REPO_URL="/test_repo.git"
 DRIVER_URL=""
 PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
+CONFIG_JSON="AlexaClientSDKConfig.json"
 
 # Sound file URLS
 SF_ALERT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_02._TTH_.mp3"
@@ -30,25 +31,29 @@ function echo_error() {
     echo -e "${RED}`date` : ERROR : $1 ${NC}"
 }
 
+function echo_fatal() {
+    echo -e "${RED}`date` : FATAL : $1 ${NC}"
+    exit -1
+}
+
 function check_error() {
     if [ $? -ne 0 ] ; then
-        echo_error "ERROR: $1"
-        exit -1
+        echo_fatal "$1"
     fi
 }
 
 function parse_user_input() {
-    prompt="$1"
-    yes="$2"
-    no="$3"
+    local prompt="$1"
+    local yes="$2"
+    local no="$3"
+    local _answer=$4
 
     while true; do
         read -p "$prompt " answer
 
-        if [ "$answer" == "$yes" ] ; then
-            return $answer
-        elif [ "$answer" == "$no" ] ; then
-            return $answer
+        if [ "$answer" == "$yes" ] || [ "$answer" == "$no" ] ; then
+            eval $_answer="$answer"
+            break
         else
             echo_error "Unknown selection: $answer"
         fi
@@ -77,20 +82,35 @@ portaudio_include="$portaudio/include/"
 
 app_necessities="$sdk_folder/application-necessities"
 sound_files="$app_necessities/sound-files"
-sf_alarm="$sound_files/med_system_alerts_melodic_01._TTH_.mp3"
-sf_alarm_short="$sound_files/med_system_alerts_melodic_00_short._TTH_.wav"
-sf_timer="$sound_files/med_system_alerts_melodic_02._TTH_.mp3"
-sf_timer_short="$sound_files/med_system_alerts_melodic_02_short._TTH_.wav"
+
+# Your device serial number. Cannot be blank, but can be any combination of characters.
+SDK_CONFIG_DEVICE_SERIAL_NUMBER='123456789'
+# Audio file locations. These should match their locations on the system.
+SDK_SQLITE_DATABASE_FILE_PATH=''
+SDK_ALARM_DEFAULT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_01._TTH_.mp3s"
+SDK_ALARM_SHORT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_01_short._TTH_.wav"
+SDK_TIMER_DEFAULT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_02._TTH_.mp3"
+SDK_TIMER_SHORT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_02_short._TTH_.wav"
+# Default database location settings.
+SDK_SQLITE_DATABASE_FILE_PATH="$app_necessities/alerts.db"
+SDK_SQLITE_SETTINGS_DATABASE_FILE_PATH="$app_necessities/settings.db"
+SDK_CERTIFIED_SENDER_DATABASE_FILE_PATH="$app_necessities/certifiedSender.db"
+
+config_template="$git_repo/Integration/$CONFIG_JSON"
+config_dest="$sdk_build/Integration/$CONFIG_JSON"
 
 # Verify that the user is not running the script as root
-verify_not_root
+# verify_not_root
 
 echo_info "Running apt update"
-sudo apt update
+apt update
 check_error "Failed to update apt repositories"
 
 echo_info "Installing dependencies"
-sudo apt install -y \
+apt install -y \
+    python \
+    python-pip \
+    wget \
     git \
     gcc \
     cmake \
@@ -105,6 +125,10 @@ sudo apt install -y \
     libasound2-dev \
     doxygen
 check_error "Failed to install of the dependencies"
+
+echo_info "Installing Python dependencies"
+pip install flask requests
+check_error "Failed to install Python dependencies"
 
 # Creating the folder structure if it does not exist
 if [ ! -d "$sdk_folder" ] ; then
@@ -143,8 +167,7 @@ if [ ! -d "$git_repo" ] || [ `git -C $git_repo rev-parse` -ne 0 ] ; then
                 check_error "Failed to delete '$git_repo'"
                 break
             elif [ "$answer" == "n" ] || [ "$answer" == "N" ] ; then
-                echo_error "Installation failed due to '$git_repo' already existing and not being a git repository"
-                exit -1
+                echo_fatal "Installation failed due to '$git_repo' already existing and not being a git repository"
             else
                 echo_error "Unknown user input: $answer"
             fi
@@ -157,6 +180,7 @@ if [ ! -d "$git_repo" ] || [ `git -C $git_repo rev-parse` -ne 0 ] ; then
 fi
 
 # TODO: Install the driver
+echo_warn "Installation of the driver is unimplemented"
 
 # Installing third-party dependencies
 if [ ! -f "$libportaudio" ] ; then
@@ -202,25 +226,25 @@ fi
 pushd $PWD
 cd $sound_files
 
-if [ ! -f "$sf_alarm" ] ; then
+if [ ! -f "$SDK_ALARM_DEFAULT_SOUND_FILE_PATH" ] ; then
     echo_info "Downloading sound file '$SF_ALERT_URL'"
-    wget -c $SF_ALERT_URL
+    wget $SF_ALERT_URL
     check_error "Failed to download sound file '$SF_ALERT_URL'"
 fi
 
-if [ ! -f "$sf_alarm_short" ] ; then
+if [ ! -f "$SDK_ALARM_SHORT_SOUND_FILE_PATH" ] ; then
     echo_info "Downloading sound file '$SF_ALERT_SHORT_URL'"
-    wget -c $SF_ALERT_SHORT_URL
+    wget $SF_ALERT_SHORT_URL
     check_error "Failed to download sound file '$SF_ALERT_SHORT_URL'"
 fi
 
-if [ ! -f "$sf_timer" ] ; then
+if [ ! -f "$SDK_TIMER_DEFAULT_SOUND_FILE_PATH" ] ; then
     echo_info "Downloading sound file '$SF_TIMER_URL'"
     wget -c $SF_TIMER_URL
     check_error "Failed to download sound file '$SF_TIMER_URL'"
 fi
 
-if [ ! -f "$sf_timer_short" ] ; then
+if [ ! -f "$SDK_TIMER_SHORT_SOUND_FILE_PATH" ] ; then
     echo_info "Downloading sound file '$SF_TIMER_SHORT_URL'"
     wget -c $SF_TIMER_SHORT_URL
     check_error "Failed to download sound file '$SF_TIMER_SHORT_URL'"
@@ -229,21 +253,21 @@ fi
 popd
 
 # Get the account specific information from the user
-product_id=""
-client_id=""
-client_secret=""
+SDK_CONFIG_PRODUCT_ID=""
+SDK_CONFIG_CLIENT_ID=""
+SDK_CONFIG_CLIENT_SECRET=""
 
 while true ; do
-    read -p "Please enter your Product ID: " product_id
-    read -p "Please enter your Client ID: " client_id
-    read -p "Please enter your Client Secret: " client_secret
+    read -p "Please enter your Product ID: " SDK_CONFIG_PRODUCT_ID
+    read -p "Please enter your Client ID: " SDK_CONFIG_CLIENT_ID
+    read -p "Please enter your Client Secret: " SDK_CONFIG_CLIENT_SECRET
     
     echo -e "Are these values correct?\n"\
-        "Product ID: $product_id\n"\
-        "Client ID: $client_id\n"\
-        "Client Secret: $client_secret"
+        "Product ID: $SDK_CONFIG_PRODUCT_ID\n"\
+        "Client ID: $SDK_CONFIG_CLIENT_ID\n"\
+        "Client Secret: $SDK_CONFIG_CLIENT_SECRET"
 
-    answer=`parse_user_input "(y/n)" "y" "n"`
+    parse_user_input "(y/n)" "y" "n" answer
 
     if [ "$answer" == "y" ] ; then
         break
@@ -270,6 +294,47 @@ check_error "Failed to compile C++ SDK"
 
 popd
 
-# TODO: Setup the JSON file
+# Generate the JSON configuration
+# Fix template - missing '$' causes one variable to be missed
+sed -i.bak 's/"{/"${/g' $config_template 
 
-# TODO: Run authentication server
+if [ -f "$config_dest" ] ; then
+    echo_warn "Deleting old JSON config '$config_dest'"
+    rm $config_dest
+    check_error "Failed to remove the old JSON config"
+fi
+
+#-------------------------------------------------------
+# Inserts user-provided values into a template file
+#-------------------------------------------------------
+# Arguments are: template path, target path 
+function use_template() {
+  template=$1
+  dest=$2
+  while IFS='' read -r line || [[ -n "$line" ]]; do
+    while [[ "$line" =~ (\$\{[a-zA-Z_][a-zA-Z_0-9]*\}) ]]; do
+      LHS=${BASH_REMATCH[1]}
+      RHS="$(eval echo "\"$LHS\"")"
+      line=${line//$LHS/$RHS}
+    done
+    echo "$line" >> "$dest"
+  done < "$template"
+}
+
+use_template $config_template $config_dest
+
+# Starting web server
+echo_info "Starting authentication web server"
+python $sdk_build/AuthServer/AuthServer.py &
+pid=$!
+check_error "Failed to start the authentication web server"
+
+echo_info "Launching web browser"
+python -mwebbrowser http://localhost:3000
+
+# Keep script running until the AuthServer terminates 
+trap "kill $pid 2> /dev/null" EXIT
+while kill -0 $pid 2> /dev/null; do
+	sleep 2
+done
+trap - EXIT
