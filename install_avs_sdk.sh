@@ -1,5 +1,7 @@
 #!/bin/bash
 
+HOME="/home/${SUDO_USER}"
+
 GIT_REPO_URL="/test_repo.git"
 DRIVER_URL=""
 PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz"
@@ -283,13 +285,12 @@ cmake -DCMAKE_BUILD_TYPE=DEBUG \
     -DHARDWARE_KEY_WORD_DETECTOR=ON \
     -DALSA_HARDWARE_CONTROLLER=ON \
     -DGSTREAMER_MEDIA_PLAYER=ON \
-    -DSTRESS_TESTER_APP=ON \
     -DPORTAUDIO=ON \
     -DPORTAUDIO_LIB_PATH=$portaudio_lib \
     -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
     $git_repo
 check_error "CMake failed for building C++ SDK"
-make SampleApp -j2
+make -j2
 check_error "Failed to compile C++ SDK"
 
 popd
