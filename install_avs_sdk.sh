@@ -13,6 +13,7 @@ SF_ALERT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/de
 SF_ALERT_SHORT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_02_short._TTH_.wav"
 SF_TIMER_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_01._TTH_.mp3"
 SF_TIMER_SHORT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_01_short._TTH_.wav"
+SETTING_LOCALE_VALUE='en-US'
 
 ## Logging
 RED='\033[0;31m'
@@ -62,10 +63,9 @@ function parse_user_input() {
     done
 }
 
-function verify_not_root() {
-    if [[ $EUID -eq 0 ]]; then
-        echo_error "Script must not be ran as root"
-        exit -1
+function verify_root() {
+    if [[ $EUID -ne 0 ]]; then
+        echo_fatal "Script must be ran as root"
     fi
 }
 
@@ -89,7 +89,7 @@ sound_files="$app_necessities/sound-files"
 SDK_CONFIG_DEVICE_SERIAL_NUMBER='123456789'
 # Audio file locations. These should match their locations on the system.
 SDK_SQLITE_DATABASE_FILE_PATH=''
-SDK_ALARM_DEFAULT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_01._TTH_.mp3s"
+SDK_ALARM_DEFAULT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_01._TTH_.mp3"
 SDK_ALARM_SHORT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_01_short._TTH_.wav"
 SDK_TIMER_DEFAULT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_02._TTH_.mp3"
 SDK_TIMER_SHORT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_02_short._TTH_.wav"
@@ -102,7 +102,32 @@ config_template="$git_repo/Integration/$CONFIG_JSON"
 config_dest="$sdk_build/Integration/$CONFIG_JSON"
 
 # Verify that the user is not running the script as root
-# verify_not_root
+verify_root
+
+# Get the account specific information from the user
+SDK_CONFIG_PRODUCT_ID=""
+SDK_CONFIG_CLIENT_ID=""
+SDK_CONFIG_CLIENT_SECRET=""
+
+echo_info "Obtaining Amazon developer account information for the device"
+
+echo "Please provide your Amazon account specific information"
+while true ; do
+    read -p "Please enter your Product ID: " SDK_CONFIG_PRODUCT_ID
+    read -p "Please enter your Client ID: " SDK_CONFIG_CLIENT_ID
+    read -p "Please enter your Client Secret: " SDK_CONFIG_CLIENT_SECRET
+    
+    echo -e "Are these values correct?\n"\
+        "Product ID: $SDK_CONFIG_PRODUCT_ID\n"\
+        "Client ID: $SDK_CONFIG_CLIENT_ID\n"\
+        "Client Secret: $SDK_CONFIG_CLIENT_SECRET"
+
+    parse_user_input "(y/n)" "y" "n" answer
+
+    if [ "$answer" == "y" ] ; then
+        break
+    fi
+done
 
 echo_info "Running apt update"
 apt update
@@ -209,6 +234,7 @@ if [ ! -f "$libportaudio" ] ; then
     make
     check_error "Failed to compile PortAudio"
 
+    popd
     popd  # Return to previous directory
 fi
 
@@ -228,53 +254,16 @@ fi
 pushd $PWD
 cd $sound_files
 
-if [ ! -f "$SDK_ALARM_DEFAULT_SOUND_FILE_PATH" ] ; then
-    echo_info "Downloading sound file '$SF_ALERT_URL'"
-    wget $SF_ALERT_URL
+if [ ! -f "$SDK_ALARM_DEFAULT_SOUND_FILE_PATH" ] || \
+    [ ! -f "$SDK_ALARM_SHORT_SOUND_FILE_PATH" ] || \
+    [ ! -f "$SDK_TIMER_DEFAULT_SOUND_FILE_PATH" ] || \
+    [ ! -f "$SDK_TIMER_SHORT_SOUND_FILE_PATH" ] ; then
+    echo_info "Downloading alarm and timer sound files"
+    wget -c $SF_ALERT_URL && wget -c $SF_ALERT_SHORT_URL && wget -c $SF_TIMER_URL && wget -c $SF_TIMER_SHORT_URL
     check_error "Failed to download sound file '$SF_ALERT_URL'"
 fi
 
-if [ ! -f "$SDK_ALARM_SHORT_SOUND_FILE_PATH" ] ; then
-    echo_info "Downloading sound file '$SF_ALERT_SHORT_URL'"
-    wget $SF_ALERT_SHORT_URL
-    check_error "Failed to download sound file '$SF_ALERT_SHORT_URL'"
-fi
-
-if [ ! -f "$SDK_TIMER_DEFAULT_SOUND_FILE_PATH" ] ; then
-    echo_info "Downloading sound file '$SF_TIMER_URL'"
-    wget -c $SF_TIMER_URL
-    check_error "Failed to download sound file '$SF_TIMER_URL'"
-fi
-
-if [ ! -f "$SDK_TIMER_SHORT_SOUND_FILE_PATH" ] ; then
-    echo_info "Downloading sound file '$SF_TIMER_SHORT_URL'"
-    wget -c $SF_TIMER_SHORT_URL
-    check_error "Failed to download sound file '$SF_TIMER_SHORT_URL'"
-fi
-
 popd
-
-# Get the account specific information from the user
-SDK_CONFIG_PRODUCT_ID=""
-SDK_CONFIG_CLIENT_ID=""
-SDK_CONFIG_CLIENT_SECRET=""
-
-while true ; do
-    read -p "Please enter your Product ID: " SDK_CONFIG_PRODUCT_ID
-    read -p "Please enter your Client ID: " SDK_CONFIG_CLIENT_ID
-    read -p "Please enter your Client Secret: " SDK_CONFIG_CLIENT_SECRET
-    
-    echo -e "Are these values correct?\n"\
-        "Product ID: $SDK_CONFIG_PRODUCT_ID\n"\
-        "Client ID: $SDK_CONFIG_CLIENT_ID\n"\
-        "Client Secret: $SDK_CONFIG_CLIENT_SECRET"
-
-    parse_user_input "(y/n)" "y" "n" answer
-
-    if [ "$answer" == "y" ] ; then
-        break
-    fi
-done
 
 # Compile the code
 pushd $PWD
@@ -290,7 +279,7 @@ cmake -DCMAKE_BUILD_TYPE=DEBUG \
     -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
     $git_repo
 check_error "CMake failed for building C++ SDK"
-make -j2
+make SampleApp -j2
 check_error "Failed to compile C++ SDK"
 
 popd
@@ -323,6 +312,10 @@ function use_template() {
 }
 
 use_template $config_template $config_dest
+
+echo_info "Changing ownership of $sdk_folder to $SUDO_USER"
+chown -R ${SUDO_USER}:${SUDO_USER} $sdk_folder
+check_error "Failed to transfer ownership"
 
 # Starting web server
 echo_info "Starting authentication web server"
