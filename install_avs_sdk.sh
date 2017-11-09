@@ -3,7 +3,7 @@
 HOME="/home/${SUDO_USER}"
 
 GIT_REPO_URL="/test_repo.git"
-DRIVER_URL=""
+GIT_DRIVER_URL=""
 PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
 CONFIG_JSON="AlexaClientSDKConfig.json"
@@ -69,6 +69,7 @@ function verify_root() {
     fi
 }
 
+
 # Important directories and files
 sdk_folder="$HOME/sdk-folder"
 sdk_source="$sdk_folder/sdk-source"
@@ -76,6 +77,18 @@ sdk_build="$sdk_folder/sdk-build"
 
 third_party="$sdk_folder/third-party"
 git_repo="$sdk_source/avs-device-sdk"
+
+# Driver file directories
+driver_folder="$sdk_folder/driver-folder"
+
+# Getting kernel version
+kernel_version=`uname -r | python -c "import re,sys;print(re.findall('\d*.\d*', sys.stdin.read()))[0]"`
+check_error "Failed to get kernel version"
+
+kernel_tar="$driver_folder/linux-$kernel_version.tar.gz"
+kernel_url="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/$kernel_tar"
+kernel_folder="$driver_folder/linux-$kernel_version"
+driver_repo="$driver_folder/driver-repo"
 
 portaudio="$third_party/portaudio"
 portaudio_tar="$third_party/$PORT_AUDIO_TAR"
@@ -133,6 +146,8 @@ echo_info "Running apt update"
 apt update
 check_error "Failed to update apt repositories"
 
+# TODO: Add dependencies for compiling the kernel
+
 echo_info "Installing dependencies"
 apt install -y \
     python \
@@ -186,19 +201,18 @@ fi
 # git repository
 if [ ! -d "$git_repo" ] || [ `git -C $git_repo rev-parse` -ne 0 ] ; then
     if [ -d "$git_repo" ] ; then
-        while true; do
-            read -p "The git repository directory already exists, is it ok to delete it? (y/n)" answer
-            if [ "$answer" == "y" ] || [ "$answer" == "Y" ] ; then
-                echo_info "Deleting '$git_repo'"
-                rm -r $git_repo
-                check_error "Failed to delete '$git_repo'"
-                break
-            elif [ "$answer" == "n" ] || [ "$answer" == "N" ] ; then
-                echo_fatal "Installation failed due to '$git_repo' already existing and not being a git repository"
-            else
-                echo_error "Unknown user input: $answer"
-            fi
-        done
+        parse_user_input \
+            "The SDK git repository directory already exists, is it ok to delete it? (y/n)" \
+            "y" "n" answer
+
+        if [ "$answer" == "y" ] ; then
+            echo_warn "Deleting '$git_repo'"
+            rm -r $git_repo
+            check_error "Failed to delete '$git_repo'"
+            break
+        else
+            echo_fatal "Installation failed due to 'i$git_repo' already existing and not being a git repository"
+        fi
     fi
 
     echo_info "Cloning git repository '$GIT_REPO_URL' to '$git_repo'"
@@ -206,8 +220,52 @@ if [ ! -d "$git_repo" ] || [ `git -C $git_repo rev-parse` -ne 0 ] ; then
     check_error "Failed to clone '$GIT_REPO_URL'"
 fi
 
-# TODO: Install the driver
-echo_warn "Installation of the driver is unimplemented"
+# Compile/install the driver
+
+pushd $PWD
+cd $driver_folder
+
+# Make suer the tar file exists
+if [ ! -f "$kernel_tar" ] ; then
+    echo_info "Downloading kernel"
+    wget -c $kernel_url
+    check_error "Failed to download kernel from '$kernel_url'"
+fi
+
+# Verify that the kernel has been extracted
+if [ ! -d "$kernel_folder" ] ; then
+    echo_info "Decompressing the kernel tar file '$kernel_tar'"
+    tar xvf $kernel_tar
+    check_error "Failed to decompress the kernel tar file"
+fi
+
+# Clone the driver git repository if it does not exist, or if the directory is 
+# not a git repository
+if [ ! -d "$driver_repo" ] || [ `git -C $driver_repo rev-parse` -ne 0 ] ; then
+    if [ -d "$driver_repo" ] ; then
+        parse_user_input \
+            "The driver git repository directory already exists, is it ok to delete it? (y/n)" \
+            "y" "n" answer
+
+        if [ "$answer" == "y" ] ; then
+            echo_warn "Deleting '$driver_repo'"
+            rm -r $driver_repo
+            check_error "Failed to delete '$driver_repo'"
+            break
+        else
+            echo_fatal "Installation failed due to '$driver_repo' already existing and not being a git repository"
+        fi
+    fi
+
+    echo_info "Cloning git repository '$GIT_DRIVER_URL' to '$driver_repo'"
+    git clone $GIT_DRIVER_URL $driver_repo
+    check_error "Failed to clone '$GIT_DRIVER_URL'"
+fi
+
+# TODO: Apply the patch to the kernel
+# TODO: Install the newly compiled kernel
+
+popd
 
 # Installing third-party dependencies
 if [ ! -f "$portaudio_lib" ] ; then
