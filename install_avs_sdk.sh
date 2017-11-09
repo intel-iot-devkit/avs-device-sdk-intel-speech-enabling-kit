@@ -210,7 +210,7 @@ fi
 echo_warn "Installation of the driver is unimplemented"
 
 # Installing third-party dependencies
-if [ ! -f "$libportaudio" ] ; then
+if [ ! -f "$portaudio_lib" ] ; then
     pushd $PWD  # Save current directory
     
     cd $third_party
