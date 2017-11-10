@@ -213,6 +213,8 @@ while true ; do
 done
 
 if [[ $from_scratch -eq 0 ]] ; then
+    # Note that the generate_json_config function exists the script, so
+    # execution will not continue past this point
     generate_json_config
 fi
 
@@ -274,18 +276,10 @@ fi
 # git repository
 if [ ! -d "$git_repo" ] || [ `git -C $git_repo rev-parse` -ne 0 ] ; then
     if [ -d "$git_repo" ] ; then
-        parse_user_input \
-            "The SDK git repository directory already exists, is it ok to delete it? (y/n)" \
-            "y" "n" answer
-
-        if [ "$answer" == "y" ] ; then
-            echo_warn "Deleting '$git_repo'"
-            rm -r $git_repo
-            check_error "Failed to delete '$git_repo'"
-            break
-        else
-            echo_fatal "Installation failed due to 'i$git_repo' already existing and not being a git repository"
-        fi
+        echo_warn "Deleting '$git_repo'"
+        rm -r $git_repo
+        check_error "Failed to delete '$git_repo'"
+        break
     fi
 
     echo_info "Cloning git repository '$GIT_REPO_URL' to '$git_repo'"
@@ -302,18 +296,10 @@ cd $sdk_folder
 # not a git repository
 if [ ! -d "$driver_repo" ] || [ `git -C $driver_repo rev-parse` -ne 0 ] ; then
     if [ -d "$driver_repo" ] ; then
-        parse_user_input \
-            "The driver git repository directory already exists, is it ok to delete it? (y/n)" \
-            "y" "n" answer
-
-        if [ "$answer" == "y" ] ; then
-            echo_warn "Deleting '$driver_repo'"
-            rm -r $driver_repo
-            check_error "Failed to delete '$driver_repo'"
-            break
-        else
-            echo_fatal "Installation failed due to '$driver_repo' already existing and not being a git repository"
-        fi
+        echo_warn "Deleting '$driver_repo'"
+        rm -r $driver_repo
+        check_error "Failed to delete '$driver_repo'"
+        break
     fi
 
     echo_info "Cloning git repository '$GIT_DRIVER_URL' to '$driver_repo'"
