@@ -139,10 +139,9 @@ echo_info "Running apt update"
 apt update
 check_error "Failed to update apt repositories"
 
-# TODO: Add dependencies for compiling the kernel
-
 echo_info "Installing dependencies"
 apt install -y \
+    bc \
     python \
     python-pip \
     wget \
@@ -241,8 +240,43 @@ if [ ! -d "$driver_repo" ] || [ `git -C $driver_repo rev-parse` -ne 0 ] ; then
     check_error "Failed to clone '$GIT_DRIVER_URL'"
 fi
 
-# TODO: Apply the patch to the kernel
-# TODO: Install the newly compiled kernel
+cd $driver_repo
+
+# The assumption here is that if we did not get to the last step, then recompile
+# the kernel
+if [ ! -f "./kernel7.img" ] ; then
+    echo_info "Making driver .config"
+    make defconfig KBUILD_DEFCONFIG=intel_s1000_defconfig
+    check_error "Failed to make .config"
+
+    echo_info "Compiling kernel - this may take awhile, go get coffee"
+    make -j2 zImage modules dtbs
+    check_error "Failed to compile the kernel"
+
+    echo_warn "Removing old /lib/modules"
+    rm -r /lib/modules
+    check_error "Failed to remove old /lib/modules"
+
+    echo_info "Installing new /lib/modules"
+    make INSTALL_MOD_PATH=/lib/ modules_install
+    check_error "Failed to install new /lib/modules"
+
+    echo_info "Copying over new dtb files"
+    cp arch/arm/boot/dts/*.dtb /boot/
+    check_error "Failed to copy over the new dtb files"
+
+    echo_info "Copying over the dtb overlays"
+    cp arch/arm/boot/dts/overlays/* /boot/overlays/
+    check_error "Failed top copy over the dtb overlays"
+
+    echo_info "Creating over the new kernel7.img"
+    ./scripts/mkknlimg arch/arm/boot/zImage ./kernel7.img
+    check_error "Failed to create the new kernel7.img"
+
+    echo_info "Copying over the new kernel7.img"
+    cp ./kernel7.img /boot/
+    check_error "Failed to copy over the new kernel7.img"
+fi
 
 popd
 
