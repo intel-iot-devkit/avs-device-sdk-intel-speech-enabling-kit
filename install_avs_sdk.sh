@@ -69,6 +69,13 @@ function verify_root() {
     fi
 }
 
+function usage() {
+    echo "usage $1 [-h|--help] [options]"
+    echo -e "\t-h|--help      : Show this help"
+    echo -e "\t--debug        : Compile the AVS SDK mode in debug mode"
+    echo -e "\t--from-scratch : Setup the AVS SDK from scratch"
+    exit 0
+}
 
 # Important directories and files
 sdk_folder="$HOME/sdk-folder"
@@ -107,13 +114,83 @@ SDK_CERTIFIED_SENDER_DATABASE_FILE_PATH="$app_necessities/certifiedSender.db"
 config_template="$git_repo/Integration/$CONFIG_JSON"
 config_dest="$sdk_build/Integration/$CONFIG_JSON"
 
-# Verify that the user is not running the script as root
-verify_root
 
 # Get the account specific information from the user
 SDK_CONFIG_PRODUCT_ID=""
 SDK_CONFIG_CLIENT_ID=""
 SDK_CONFIG_CLIENT_SECRET=""
+from_scratch=0
+compile_sdk_debug=0
+
+function generate_json_config() {
+    # Generate the JSON configuration
+    # Fix template - missing '$' causes one variable to be missed
+    echo_info "Generating '$config_dest'"
+    sed -i.bak 's/"{/"${/g' $config_template 
+
+    if [ -f "$config_dest" ] ; then
+        echo_warn "Deleting old JSON config '$config_dest'"
+        rm $config_dest
+        check_error "Failed to remove the old JSON config"
+    fi
+
+    #-------------------------------------------------------
+    # Inserts user-provided values into a template file
+    #-------------------------------------------------------
+    # Arguments are: template path, target path 
+    function use_template() {
+      template=$1
+      dest=$2
+      while IFS='' read -r line || [[ -n "$line" ]]; do
+        while [[ "$line" =~ (\$\{[a-zA-Z_][a-zA-Z_0-9]*\}) ]]; do
+          LHS=${BASH_REMATCH[1]}
+          RHS="$(eval echo "\"$LHS\"")"
+          line=${line//$LHS/$RHS}
+        done
+        echo "$line" >> "$dest"
+      done < "$template"
+    }
+
+    use_template $config_template $config_dest
+
+    echo_info "Changing ownership of $sdk_folder to $SUDO_USER"
+    chown -R ${SUDO_USER}:${SUDO_USER} $sdk_folder
+    check_error "Failed to transfer ownership"
+
+    # Starting web server
+    echo_info "Starting authentication web server"
+    python $sdk_build/AuthServer/AuthServer.py &
+    pid=$!
+    check_error "Failed to start the authentication web server"
+
+    echo_info "Launching web browser"
+    python -mwebbrowser http://localhost:3000
+
+    # Keep script running until the AuthServer terminates 
+    trap "kill $pid 2> /dev/null" EXIT
+    while kill -0 $pid 2> /dev/null; do
+        sleep 2
+    done
+    trap - EXIT
+}
+
+# Verify that the user is not running the script as root
+verify_root
+
+for var in "$@" ; do
+    case "$var" in
+        "--from-scratch" )
+            echo_info "Running installation from scratch"
+            from_scratch=1 ;;
+        "--debug" )
+            echo_info "Compiling SDK in debug mode"
+            compile_sdk_debug=1 ;;
+        "-h" )
+            usage $0 ;;
+        "--help" )
+            usage $0 ;;
+    esac
+done
 
 echo_info "Obtaining Amazon developer account information for the device"
 
@@ -134,6 +211,10 @@ while true ; do
         break
     fi
 done
+
+if [[ $from_scratch -eq 0 ]] ; then
+    generate_json_config
+fi
 
 echo_info "Running apt update"
 apt update
@@ -341,14 +422,24 @@ pushd $PWD
 cd $sdk_build
 
 echo_info "Building the C++ SDK"
-cmake -DCMAKE_BUILD_TYPE=DEBUG \
-    -DHARDWARE_KEY_WORD_DETECTOR=ON \
-    -DALSA_HARDWARE_CONTROLLER=ON \
-    -DGSTREAMER_MEDIA_PLAYER=ON \
-    -DPORTAUDIO=ON \
-    -DPORTAUDIO_LIB_PATH=$portaudio_lib \
-    -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
-    $git_repo
+if [[ $compile_sdk_debug == 1 ]] ; then
+    cmake -DCMAKE_BUILD_TYPE=DEBUG \
+        -DHARDWARE_KEY_WORD_DETECTOR=ON \
+        -DALSA_HARDWARE_CONTROLLER=ON \
+        -DGSTREAMER_MEDIA_PLAYER=ON \
+        -DPORTAUDIO=ON \
+        -DPORTAUDIO_LIB_PATH=$portaudio_lib \
+        -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
+        $git_repo
+else
+    cmake -DHARDWARE_KEY_WORD_DETECTOR=ON \
+        -DALSA_HARDWARE_CONTROLLER=ON \
+        -DGSTREAMER_MEDIA_PLAYER=ON \
+        -DPORTAUDIO=ON \
+        -DPORTAUDIO_LIB_PATH=$portaudio_lib \
+        -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
+        $git_repo
+fi
 check_error "CMake failed for building C++ SDK"
 make SampleApp -j2
 check_error "Failed to compile C++ SDK"
@@ -367,52 +458,4 @@ echo "#!/bin/bash" > $startsample_script
 echo "cd $sdk_build/SampleApp/src/" >> $startsample_script
 echo "TZ=UTC ./SampleApp $config_dest" >> $startsample_script
 
-# Generate the JSON configuration
-# Fix template - missing '$' causes one variable to be missed
-echo_info "Generating '$config_dest'"
-sed -i.bak 's/"{/"${/g' $config_template 
-
-if [ -f "$config_dest" ] ; then
-    echo_warn "Deleting old JSON config '$config_dest'"
-    rm $config_dest
-    check_error "Failed to remove the old JSON config"
-fi
-
-#-------------------------------------------------------
-# Inserts user-provided values into a template file
-#-------------------------------------------------------
-# Arguments are: template path, target path 
-function use_template() {
-  template=$1
-  dest=$2
-  while IFS='' read -r line || [[ -n "$line" ]]; do
-    while [[ "$line" =~ (\$\{[a-zA-Z_][a-zA-Z_0-9]*\}) ]]; do
-      LHS=${BASH_REMATCH[1]}
-      RHS="$(eval echo "\"$LHS\"")"
-      line=${line//$LHS/$RHS}
-    done
-    echo "$line" >> "$dest"
-  done < "$template"
-}
-
-use_template $config_template $config_dest
-
-echo_info "Changing ownership of $sdk_folder to $SUDO_USER"
-chown -R ${SUDO_USER}:${SUDO_USER} $sdk_folder
-check_error "Failed to transfer ownership"
-
-# Starting web server
-echo_info "Starting authentication web server"
-python $sdk_build/AuthServer/AuthServer.py &
-pid=$!
-check_error "Failed to start the authentication web server"
-
-echo_info "Launching web browser"
-python -mwebbrowser http://localhost:3000
-
-# Keep script running until the AuthServer terminates 
-trap "kill $pid 2> /dev/null" EXIT
-while kill -0 $pid 2> /dev/null; do
-	sleep 2
-done
-trap - EXIT
+generate_json_config
