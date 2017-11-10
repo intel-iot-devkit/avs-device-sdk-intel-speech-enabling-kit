@@ -79,16 +79,7 @@ third_party="$sdk_folder/third-party"
 git_repo="$sdk_source/avs-device-sdk"
 
 # Driver file directories
-driver_folder="$sdk_folder/driver-folder"
-
-# Getting kernel version
-kernel_version=`uname -r | python -c "import re,sys;print(re.findall('\d*.\d*', sys.stdin.read()))[0]"`
-check_error "Failed to get kernel version"
-
-kernel_tar="$driver_folder/linux-$kernel_version.tar.gz"
-kernel_url="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/$kernel_tar"
-kernel_folder="$driver_folder/linux-$kernel_version"
-driver_repo="$driver_folder/driver-repo"
+driver_repo="$sdk_folder/driver-repo"
 
 portaudio="$third_party/portaudio"
 portaudio_tar="$third_party/$PORT_AUDIO_TAR"
@@ -97,6 +88,8 @@ portaudio_include="$portaudio/include/"
 
 app_necessities="$sdk_folder/application-necessities"
 sound_files="$app_necessities/sound-files"
+
+startsample_script="$sdk_folder/startsample.sh"
 
 # Your device serial number. Cannot be blank, but can be any combination of characters.
 SDK_CONFIG_DEVICE_SERIAL_NUMBER='123456789'
@@ -223,21 +216,7 @@ fi
 # Compile/install the driver
 
 pushd $PWD
-cd $driver_folder
-
-# Make suer the tar file exists
-if [ ! -f "$kernel_tar" ] ; then
-    echo_info "Downloading kernel"
-    wget -c $kernel_url
-    check_error "Failed to download kernel from '$kernel_url'"
-fi
-
-# Verify that the kernel has been extracted
-if [ ! -d "$kernel_folder" ] ; then
-    echo_info "Decompressing the kernel tar file '$kernel_tar'"
-    tar xvf $kernel_tar
-    check_error "Failed to decompress the kernel tar file"
-fi
+cd $sdk_folder
 
 # Clone the driver git repository if it does not exist, or if the directory is 
 # not a git repository
@@ -342,8 +321,21 @@ check_error "Failed to compile C++ SDK"
 
 popd
 
+# Generating start script
+echo_info "Generating '$startsample_script'"
+if [ -f "$startsample_script" ] ; then
+    echo_warn "Deleting old '$startsample_script'"
+    rm $startsample_script
+    check_error "Failed to delete the old '$startsample_script'"
+fi
+
+echo "#!/bin/bash" > $startsample_script
+echo "cd $sdk_build/SampleApp/src/" >> $startsample_script
+echo "TZ=UTC ./SampleApp $config_dest" >> $startsample_script
+
 # Generate the JSON configuration
 # Fix template - missing '$' causes one variable to be missed
+echo_info "Generating '$config_dest'"
 sed -i.bak 's/"{/"${/g' $config_template 
 
 if [ -f "$config_dest" ] ; then
