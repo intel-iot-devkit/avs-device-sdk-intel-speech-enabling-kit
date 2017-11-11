@@ -3,9 +3,6 @@ project(HARDWARE_CONTROLLER LANGUAGES CXX)
 
 include(../../../build/BuildDefaults.cmake)
 
-if(SOCKET_HARDWARE_CONTROLLER)
-    add_subdirectory("Socket")
-endif()
 if(ALSA_HARDWARE_CONTROLLER)
     add_subdirectory("AlsaController")
 endif()

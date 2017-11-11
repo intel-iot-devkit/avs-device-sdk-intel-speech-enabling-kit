@@ -11,11 +11,6 @@ set(LIBRARIES
     ${CMAKE_THREAD_LIBS_INIT})
 
 
-if(SOCKET_HARDWARE_CONTROLLER)
-    list(APPEND INCLUDES "../HardwareController/Socket/include")
-    list(APPEND LIBRARIES SOCKET)
-endif()
-
 if(ALSA_HARDWARE_CONTROLLER)
     list(APPEND INCLUDES "../HardwareController/AlsaController/include")
     list(APPEND LIBRARIES ALSA_HW_CONTROLLER)

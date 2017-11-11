@@ -25,9 +25,7 @@
 #elif KWD_SENSORY
 #include <Sensory/SensoryKeywordDetector.h>
 #elif KWD_HARDWARE
-#if defined(SOCK_HW_CTRL)
-#include <Socket/SocketHardwareController.h>
-#elif defined(ALSA_HW_CTRL)
+#if defined(ALSA_HW_CTRL)
 #include <AlsaController/AlsaHardwareController.h>
 #endif
 #include <HardwareController/AbstractHardwareController.h>
@@ -424,9 +422,7 @@ bool SampleApplication::initialize(
 #elif defined(KWD_HARDWARE)
     std::shared_ptr<kwd::AbstractHardwareController> controller = nullptr;
 
-#if defined(SOCK_HW_CTRL)
-    controller = kwd::SocketHardwareController::create("localhost", 5000);
-#elif defined(ALSA_HW_CTRL)
+#if defined(ALSA_HW_CTRL)
     std::shared_ptr<kwd::AlsaHardwareController> alsaCtrl = kwd::AlsaHardwareController::create("hw:0", "Alexa");
     // Add controller to audio input observers
     client->addAudioInputProcessorObserver(alsaCtrl);
