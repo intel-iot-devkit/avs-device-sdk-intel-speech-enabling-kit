@@ -3,7 +3,7 @@
 HOME="/home/${SUDO_USER}"
 
 GIT_REPO_URL="$HOME/sdk-git-mimic.git"
-GIT_DRIVER_URL="$HOME/driver-git-mimic.git"
+GIT_DRIVER_URL="https://github.com/intel-iot-devkit/alsa-driver-intel-speech-enabling-kit.git"
 PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
 CONFIG_JSON="AlexaClientSDKConfig.json"
