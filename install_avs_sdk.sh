@@ -213,9 +213,8 @@ while true ; do
 done
 
 if [[ $from_scratch -eq 0 ]] ; then
-    # Note that the generate_json_config function exists the script, so
-    # execution will not continue past this point
     generate_json_config
+    exit 0
 fi
 
 echo_info "Running apt update"
@@ -333,8 +332,12 @@ if [ ! -f "./kernel7.img" ] ; then
     check_error "Failed to copy over the new dtb files"
 
     echo_info "Copying over the dtb overlays"
-    cp arch/arm/boot/dts/overlays/* /boot/overlays/
-    check_error "Failed top copy over the dtb overlays"
+    cp arch/arm/boot/dts/overlays/*.dtb* /boot/overlays/
+    check_error "Failed to copy over the dtb overlays"
+
+    echo_info "Copying over the dtb overlays README"
+    cp arch/arm/boot/dts/overlays/README /boot/overlays/
+    check_error "Fauled to copy over the dtb overlays README"
 
     echo_info "Creating over the new kernel7.img"
     ./scripts/mkknlimg arch/arm/boot/zImage ./kernel7.img
@@ -445,3 +448,4 @@ echo "cd $sdk_build/SampleApp/src/" >> $startsample_script
 echo "TZ=UTC ./SampleApp $config_dest" >> $startsample_script
 
 generate_json_config
+echo_warn "Please reboot your system"
