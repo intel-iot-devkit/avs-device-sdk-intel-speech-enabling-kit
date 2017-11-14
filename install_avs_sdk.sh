@@ -15,6 +15,9 @@ SF_TIMER_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/de
 SF_TIMER_SHORT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_01_short._TTH_.wav"
 SETTING_LOCALE_VALUE='en-US'
 
+# Asound config file
+ASOUND_CONFIG_FILE="$GIT_REPO_URL/"
+
 ## Logging
 RED='\033[0;31m'
 YELLOW="\033[1;33m"
@@ -311,8 +314,11 @@ cd $driver_repo
 # The assumption here is that if we did not get to the last step, then recompile
 # the kernel
 if [ ! -f "./kernel7.img" ] ; then
+    echo_info "Clean the kernel tree"
+    make mrproper
+    echo_info "Cleaning of kernel tree done"
     echo_info "Making driver .config"
-    make defconfig KBUILD_DEFCONFIG=intel_s1000_defconfig
+    make intel_s1000_defconfig
     check_error "Failed to make .config"
 
     echo_info "Compiling kernel - this may take awhile, go get coffee"
@@ -320,8 +326,9 @@ if [ ! -f "./kernel7.img" ] ; then
     check_error "Failed to compile the kernel"
 
     echo_warn "Removing old /lib/modules"
-    rm -r /lib/modules
-    check_error "Failed to remove old /lib/modules"
+    if [ -d "/lib/modules" ] ; then
+        rm -r /lib/modules
+    fi
 
     echo_info "Installing new /lib/modules"
     make INSTALL_MOD_PATH=/lib/ modules_install
@@ -349,6 +356,11 @@ if [ ! -f "./kernel7.img" ] ; then
 fi
 
 popd
+
+echo_info "Setting the spi=on in /boot/config.txt"
+sed -i -e 's/#dtparam=spi=on/ dtparam=spi=on/' /boot/config.txt
+echo_info "Disabling the default audio cards in /boot/config.txt"
+sed -i -e 's/dtparam=audio=on/ dtparam=audio=off/' /boot/config.txt
 
 # Installing third-party dependencies
 if [ ! -f "$portaudio_lib" ] ; then
@@ -434,6 +446,9 @@ make SampleApp -j2
 check_error "Failed to compile C++ SDK"
 
 popd
+
+# Copy the asound file
+cp ASOUND_CONFIG_FILE /etc/asound
 
 # Generating start script
 echo_info "Generating '$startsample_script'"
