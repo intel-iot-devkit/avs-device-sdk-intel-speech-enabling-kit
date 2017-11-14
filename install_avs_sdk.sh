@@ -463,5 +463,10 @@ echo "#!/bin/bash" > $startsample_script
 echo "cd $sdk_build/SampleApp/src/" >> $startsample_script
 echo "TZ=UTC ./SampleApp $config_dest" >> $startsample_script
 
+if [ $(grep -c "snd_soc_s1000" /etc/modules) -eq 0 ]; then
+    echo "snd_soc_s1000" >> /etc/modules
+    echo "snd_soc_s1000_mach" >> /etc/modules
+fi
+
 generate_json_config
 echo_warn "Please reboot your system"
