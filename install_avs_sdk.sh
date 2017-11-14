@@ -325,13 +325,8 @@ if [ ! -f "./kernel7.img" ] ; then
     make -j2 zImage modules dtbs
     check_error "Failed to compile the kernel"
 
-    echo_warn "Removing old /lib/modules"
-    if [ -d "/lib/modules" ] ; then
-        rm -r /lib/modules
-    fi
-
     echo_info "Installing new /lib/modules"
-    make INSTALL_MOD_PATH=/lib/ modules_install
+    make modules_install
     check_error "Failed to install new /lib/modules"
 
     echo_info "Copying over new dtb files"
@@ -347,12 +342,8 @@ if [ ! -f "./kernel7.img" ] ; then
     check_error "Fauled to copy over the dtb overlays README"
 
     echo_info "Creating over the new kernel7.img"
-    ./scripts/mkknlimg arch/arm/boot/zImage ./kernel7.img
+    ./scripts/mkknlimg arch/arm/boot/zImage /boot/kernel7.img
     check_error "Failed to create the new kernel7.img"
-
-    echo_info "Copying over the new kernel7.img"
-    cp ./kernel7.img /boot/
-    check_error "Failed to copy over the new kernel7.img"
 fi
 
 popd
@@ -449,7 +440,7 @@ popd
 
 # Copy the asound file
 echo_info "Copying the suecreek asound.conf file"
-cp ASOUND_CONFIG_FILE /etc/asound.conf
+cp "$ASOUND_CONFIG_FILE" /etc/asound.conf
 
 # Generating start script
 echo_info "Generating '$startsample_script'"
