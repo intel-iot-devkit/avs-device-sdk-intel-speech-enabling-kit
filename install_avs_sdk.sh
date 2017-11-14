@@ -8,6 +8,11 @@ PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
 CONFIG_JSON="AlexaClientSDKConfig.json"
 
+# Temporary configuration file which will store prior account information values
+# given by the users. Note that it is in the /tmp/ directory so that when the
+# system reboots the cache is erased.
+CONFIG_CACHE_LOC="/tmp/amazon_config.txt"
+
 # Sound file URLS
 SF_ALERT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_02._TTH_.mp3"
 SF_ALERT_SHORT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_02_short._TTH_.wav"
@@ -177,6 +182,30 @@ function generate_json_config() {
     trap - EXIT
 }
 
+function get_account_info() {
+    echo "Please provide your Amazon account specific information"
+    while true ; do
+        read -p "Please enter your Product ID: " SDK_CONFIG_PRODUCT_ID
+        read -p "Please enter your Client ID: " SDK_CONFIG_CLIENT_ID
+        read -p "Please enter your Client Secret: " SDK_CONFIG_CLIENT_SECRET
+        
+        echo -e "Are these values correct?\n"\
+            "Product ID: $SDK_CONFIG_PRODUCT_ID\n"\
+            "Client ID: $SDK_CONFIG_CLIENT_ID\n"\
+            "Client Secret: $SDK_CONFIG_CLIENT_SECRET"
+
+        parse_user_input "(y/n)" "y" "n" answer
+
+        if [ "$answer" == "y" ] ; then
+            # generating cache
+            echo -n "$SDK_CONFIG_PRODUCT_ID " > $CONFIG_CACHE_LOC
+            echo -n "$SDK_CONFIG_CLIENT_ID " >> $CONFIG_CACHE_LOC
+            echo "$SDK_CONFIG_CLIENT_SECRET" >> $CONFIG_CACHE_LOC
+            break
+        fi
+    done
+}
+
 # Verify that the user is not running the script as root
 verify_root
 
@@ -195,26 +224,32 @@ for var in "$@" ; do
     esac
 done
 
-echo_info "Obtaining Amazon developer account information for the device"
+if [ -f "$CONFIG_CACHE_LOC" ] ; then
+    echo_info "Reading Amazon account info cache"
+    read -r SDK_CONFIG_PRODUCT_ID SDK_CONFIG_CLIENT_ID SDK_CONFIG_CLIENT_SECRET < "$CONFIG_CACHE_LOC"
+    check_error "Failed to read Amazon account info cache"
 
-echo "Please provide your Amazon account specific information"
-while true ; do
-    read -p "Please enter your Product ID: " SDK_CONFIG_PRODUCT_ID
-    read -p "Please enter your Client ID: " SDK_CONFIG_CLIENT_ID
-    read -p "Please enter your Client Secret: " SDK_CONFIG_CLIENT_SECRET
-    
-    echo -e "Are these values correct?\n"\
+    echo -e "The following values were found for your Amazon account," \
+        "are they correct?\n"\
         "Product ID: $SDK_CONFIG_PRODUCT_ID\n"\
         "Client ID: $SDK_CONFIG_CLIENT_ID\n"\
         "Client Secret: $SDK_CONFIG_CLIENT_SECRET"
 
     parse_user_input "(y/n)" "y" "n" answer
-
-    if [ "$answer" == "y" ] ; then
-        break
+    
+    if [ "$answer" == "n" ] ; then
+        echo_info "Obtaining Amazon developer account information for the device"
+        get_account_info
     fi
-done
+else
+    # The script cannot find a prior cache with the account info, getting the
+    # account information from the user
+    echo_info "Obtaining Amazon developer account information for the device"
+    get_account_info
+fi
 
+# If we are not running from scratch, then generate the JSON configuration file
+# and then exit the script
 if [[ $from_scratch -eq 0 ]] ; then
     generate_json_config
     exit 0
@@ -316,7 +351,8 @@ cd $driver_repo
 if [ ! -f "./kernel7.img" ] ; then
     echo_info "Clean the kernel tree"
     make mrproper
-    echo_info "Cleaning of kernel tree done"
+    check_error "Failed to clean the kernel tree"
+    
     echo_info "Making driver .config"
     make intel_s1000_defconfig
     check_error "Failed to make .config"
@@ -340,7 +376,10 @@ if [ ! -f "./kernel7.img" ] ; then
     echo_info "Copying over the dtb overlays README"
     cp arch/arm/boot/dts/overlays/README /boot/overlays/
     check_error "Fauled to copy over the dtb overlays README"
-
+    
+    # Generating the kernel7.img file in the current directory to make sure the
+    # command succeeds before replacing the /boot/kernel7.img to make sure that
+    # it succeeds before possibly messing up the system.
     echo_info "Creating over the new kernel7.img"
     ./scripts/mkknlimg arch/arm/boot/zImage ./kernel7.img
     check_error "Failed to create the new kernel7.img"
