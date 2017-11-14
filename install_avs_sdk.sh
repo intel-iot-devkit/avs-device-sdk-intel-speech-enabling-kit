@@ -16,7 +16,7 @@ SF_TIMER_SHORT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-a
 SETTING_LOCALE_VALUE='en-US'
 
 # Asound config file
-ASOUND_CONFIG_FILE="$GIT_REPO_URL/"
+ASOUND_CONFIG_FILE="$GIT_REPO_URL/asound.conf"
 
 ## Logging
 RED='\033[0;31m'
@@ -448,7 +448,8 @@ check_error "Failed to compile C++ SDK"
 popd
 
 # Copy the asound file
-cp ASOUND_CONFIG_FILE /etc/asound
+echo_info "Copying the suecreek asound.conf file"
+cp ASOUND_CONFIG_FILE /etc/asound.conf
 
 # Generating start script
 echo_info "Generating '$startsample_script'"
