@@ -342,8 +342,12 @@ if [ ! -f "./kernel7.img" ] ; then
     check_error "Fauled to copy over the dtb overlays README"
 
     echo_info "Creating over the new kernel7.img"
-    ./scripts/mkknlimg arch/arm/boot/zImage /boot/kernel7.img
+    ./scripts/mkknlimg arch/arm/boot/zImage ./kernel7.img
     check_error "Failed to create the new kernel7.img"
+
+    echo_info "Copying over the new kernel7.img"
+    cp ./kernel7.img /boot/
+    check_error "Failed to copy over the new kernel7.img"
 fi
 
 popd
