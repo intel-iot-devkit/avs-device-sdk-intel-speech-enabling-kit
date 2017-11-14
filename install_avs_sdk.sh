@@ -18,7 +18,7 @@ SETTING_LOCALE_VALUE='en-US'
 # Asound config file
 ASOUND_CONFIG_FILE="$GIT_REPO_URL/asound.conf"
 
-## Logging
+## Logging 
 RED='\033[0;31m'
 YELLOW="\033[1;33m"
 GREEN="\033[0;32m"
