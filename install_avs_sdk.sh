@@ -6,7 +6,9 @@ GIT_REPO_URL="$HOME/sdk-git-mimic.git"
 GIT_DRIVER_URL="https://github.com/intel-iot-devkit/alsa-driver-intel-speech-enabling-kit.git"
 PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
+CONFIG_JSON_NO_SCRATCH="AlexaClientSDKConfig.json.template"
 CONFIG_JSON="AlexaClientSDKConfig.json"
+CONFIG_JSON_NO_SCRATCH = ${CONFIG_JSON}.template
 
 # Temporary configuration file which will store prior account information values
 # given by the users. Note that it is in the /tmp/ directory so that when the
@@ -120,6 +122,7 @@ SDK_SQLITE_SETTINGS_DATABASE_FILE_PATH="$app_necessities/settings.db"
 SDK_CERTIFIED_SENDER_DATABASE_FILE_PATH="$app_necessities/certifiedSender.db"
 
 config_template="$git_repo/Integration/$CONFIG_JSON"
+config_template_no_scratch="$sdk_build/Integration/$CONFIG_JSON_NO_SCRATCH"
 config_dest="$sdk_build/Integration/$CONFIG_JSON"
 
 
@@ -131,6 +134,9 @@ from_scratch=0
 compile_sdk_debug=0
 
 function generate_json_config() {
+    if [[ $from_scratch -eq 0 ]] ; then
+        config_template=$config_template_no_scratch
+    fi
     # Generate the JSON configuration
     # Fix template - missing '$' causes one variable to be missed
     echo_info "Generating '$config_dest'"
@@ -160,7 +166,12 @@ function generate_json_config() {
     }
 
     use_template $config_template $config_dest
-
+	
+    if [[ $from_scratch -eq 1 ]] ; then
+        echo_info "Copying the template to $sdk_folder"
+        cp $config_template $config_template_no_scratch
+    fi
+	
     echo_info "Changing ownership of $sdk_folder to $SUDO_USER"
     chown -R ${SUDO_USER}:${SUDO_USER} $sdk_folder
     check_error "Failed to transfer ownership"
