@@ -2,13 +2,12 @@
 
 HOME="/home/${SUDO_USER}"
 
-GIT_REPO_URL="$HOME/sdk-git-mimic.git"
+GIT_REPO_URL="https://github.com/intel-iot-devkit/avs-device-sdk-intel-speech-enabling-kit.git"
 GIT_DRIVER_URL="https://github.com/intel-iot-devkit/alsa-driver-intel-speech-enabling-kit.git"
 PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
-CONFIG_JSON_NO_SCRATCH="AlexaClientSDKConfig.json.template"
 CONFIG_JSON="AlexaClientSDKConfig.json"
-CONFIG_JSON_NO_SCRATCH = ${CONFIG_JSON}.template
+CONFIG_JSON_NO_SCRATCH=${CONFIG_JSON}."template"
 
 # Temporary configuration file which will store prior account information values
 # given by the users. Note that it is in the /tmp/ directory so that when the
@@ -171,7 +170,7 @@ function generate_json_config() {
         echo_info "Copying the template to $sdk_folder"
         cp $config_template $config_template_no_scratch
     fi
-	
+    
     echo_info "Changing ownership of $sdk_folder to $SUDO_USER"
     chown -R ${SUDO_USER}:${SUDO_USER} $sdk_folder
     check_error "Failed to transfer ownership"
