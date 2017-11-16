@@ -21,9 +21,6 @@ SF_TIMER_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/de
 SF_TIMER_SHORT_URL="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-voice-service/docs/audio/states/med_system_alerts_melodic_01_short._TTH_.wav"
 SETTING_LOCALE_VALUE='en-US'
 
-# Asound config file
-ASOUND_CONFIG_FILE="$GIT_REPO_URL/asound.conf"
-
 ## Logging 
 RED='\033[0;31m'
 YELLOW="\033[1;33m"
@@ -106,6 +103,10 @@ app_necessities="$sdk_folder/application-necessities"
 sound_files="$app_necessities/sound-files"
 
 startsample_script="$sdk_folder/startsample.sh"
+
+# Asound config file
+ASOUND_CONFIG_FILE="$git_repo/asound.conf"
+
 
 # Your device serial number. Cannot be blank, but can be any combination of characters.
 SDK_CONFIG_DEVICE_SERIAL_NUMBER='123456789'
