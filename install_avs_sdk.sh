@@ -8,6 +8,10 @@ PORT_AUDIO_URL="http://www.portaudio.com/archives/pa_stable_v190600_20161030.tgz
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
 CONFIG_JSON="AlexaClientSDKConfig.json"
 CONFIG_JSON_NO_SCRATCH=${CONFIG_JSON}."template"
+PRE_BUILT_BIN_URL="https://downloadmirror.intel.com/27345/eng/prebuilt.tar.gz"
+
+# Putting the pre-built tar file into /tmp/ so it is deleted on reboot
+PRE_BUILT_DEST="/tmp/prebuilt.tar.gz"
 
 # Temporary configuration file which will store prior account information values
 # given by the users. Note that it is in the /tmp/ directory so that when the
@@ -26,7 +30,6 @@ RED='\033[0;31m'
 YELLOW="\033[1;33m"
 GREEN="\033[0;32m"
 NC='\033[0m' # No Color
-cwd=`pwd`
 
 function echo_info() {
     echo -e "${GREEN}`date` : INFO : $1 ${NC}"
@@ -80,6 +83,7 @@ function usage() {
     echo -e "\t-h|--help      : Show this help"
     echo -e "\t--debug        : Compile the AVS SDK mode in debug mode"
     echo -e "\t--from-scratch : Setup the AVS SDK from scratch"
+    echo -e "\t--use-prebuilt : Download and use pre-built binaries"
     exit 0
 }
 
@@ -106,7 +110,7 @@ startsample_script="$sdk_folder/startsample.sh"
 
 # Asound config file
 ASOUND_CONFIG_FILE="$git_repo/asound.conf"
-
+ASOUND_CONFIG_FILE_PRE_BUILT="$sdk_folder/asound.conf"
 
 # Your device serial number. Cannot be blank, but can be any combination of characters.
 SDK_CONFIG_DEVICE_SERIAL_NUMBER='123456789'
@@ -132,6 +136,7 @@ SDK_CONFIG_CLIENT_ID=""
 SDK_CONFIG_CLIENT_SECRET=""
 from_scratch=0
 compile_sdk_debug=0
+use_prebuilt=0
 
 function generate_json_config() {
     if [[ $from_scratch -eq 0 ]] ; then
@@ -218,6 +223,62 @@ function get_account_info() {
     done
 }
 
+function install_kernel_from_dir() {
+    dir="$1"
+    if [ ! -d "$dir" ] ; then
+        echo_fatal "Attempting to install the kernel from a directory that does not exist: '$dir'"
+    fi
+
+    pushd $PWD
+    cd $dir
+
+    echo_warn "Removing old '/lib/modules'"
+    rm -r /lib/modules
+    check_error "Failed to remove old '/lib/modules'"
+
+    echo_info "Installing new '/lib/modules'"
+    cp -r ./lib/modules/ /lib/modules
+    check_error "Failed to install new '/lib/modules'"
+
+    echo_info "Copying over new dtb files"
+    cp *.dtb /boot/
+    check_error "Failed to copy over the new dtb files"
+
+    echo_info "Copying over the dtb overlays"
+    cp overlays/*.dtb* /boot/overlays/
+    check_error "Failed to copy over the dtb overlays"
+
+    echo_info "Copying over the dtb overlays README"
+    cp overlays/README /boot/overlays/
+    check_error "Fauled to copy over the dtb overlays README"
+
+    echo_info "Copying over the new kernel7.img"
+    cp ./kernel7.img /boot/
+    check_error "Failed to copy over the new kernel7.img"
+
+    popd
+}
+
+function add_modules() {
+    if [ $(grep -c "snd_soc_s1000" /etc/modules) -eq 0 ]; then
+        echo "snd_soc_s1000" >> /etc/modules
+        echo "snd_soc_s1000_mach" >> /etc/modules
+    fi
+}
+
+function set_spi_on() {
+    echo_info "Setting the spi=on in /boot/config.txt"
+    sed -i -e 's/#dtparam=spi=on/ dtparam=spi=on/' /boot/config.txt
+    check_error "Failed to set spi=on"
+}
+
+function disable_default_audio() {
+    echo_info "Disabling the default audio cards in /boot/config.txt"
+    sed -i -e 's/dtparam=audio=on/ dtparam=audio=off/' /boot/config.txt
+    check_error "Failed to diable the default audio cards"
+}
+
+
 # Verify that the user is not running the script as root
 verify_root
 
@@ -225,7 +286,16 @@ for var in "$@" ; do
     case "$var" in
         "--from-scratch" )
             echo_info "Running installation from scratch"
+            if [[ $use_prebuilt -eq 1 ]] ; then
+                echo_fatal "Incompatible parameters: cannot use pre-built and build from scratch"
+            fi
             from_scratch=1 ;;
+        "--use-prebuilt" )
+            echo_info "Using pre-built binaries"
+            if [[ $from_scratch -eq 1 ]] ; then
+                echo_fatal "Incompatible parameters: cannot use pre-built and build from scratch"
+            fi
+            use_prebuilt=1 ;;
         "--debug" )
             echo_info "Compiling SDK in debug mode"
             compile_sdk_debug=1 ;;
@@ -262,7 +332,7 @@ fi
 
 # If we are not running from scratch, then generate the JSON configuration file
 # and then exit the script
-if [[ $from_scratch -eq 0 ]] ; then
+if [[ $from_scratch -eq 0 ]] && [[ $use_prebuilt -ne 1 ]] ; then
     generate_json_config
     exit 0
 fi
@@ -295,6 +365,41 @@ check_error "Failed to install of the dependencies"
 echo_info "Installing Python dependencies"
 pip install flask requests
 check_error "Failed to install Python dependencies"
+
+if [[ $use_prebuilt -eq 1 ]] ; then
+    echo_info "Downloading pre-built binaries"
+    wget $PRE_BUILT_BIN_URL -O $PRE_BUILT_DEST
+    check_error "Failed to download pre-build binaries from '$PRE_BUILT_BIN_URL'"
+
+    echo_info "Extracting pre-built binaries"
+    tar xvf $PRE_BUILT_DEST
+    check_error "Failed to extract the pre-built binaries"
+
+    echo_info "Installing kernel"
+    install_kernel_from_dir "$sdk_folder/kernel-build"
+
+    echo_warn "Removing '$sdk_folder/kernel-build"
+    rm -r $sdk_folder/kernel-build
+    check_error "Failed to remove '$sdk_folder'"
+    
+    # Copy the asound file
+    echo_info "Copying the suecreek asound.conf file"
+    cp "$ASOUND_CONFIG_FILE_PRE_BUILT" /etc/asound.conf
+    check_error "Failed to copy the asound.conf"
+    
+    # Removing the asound.conf that is included in the pre-built binaries 
+    # because it is not needed at any point after this
+    echo_warn "Removing '$ASOUND_CONFIG_FILE_PRE_BUILT'"
+    rm $ASOUND_CONFIG_FILE_PRE_BUILT
+    check_error "Faild to remove '$ASOUND_CONFIG_FILE_PRE_BUILT'"
+
+    set_spi_on
+    disable_default_audio
+    add_modules
+
+    generate_json_config
+    exit 0
+fi
 
 # Creating the folder structure if it does not exist
 if [ ! -d "$sdk_folder" ] ; then
@@ -403,10 +508,8 @@ fi
 
 popd
 
-echo_info "Setting the spi=on in /boot/config.txt"
-sed -i -e 's/#dtparam=spi=on/ dtparam=spi=on/' /boot/config.txt
-echo_info "Disabling the default audio cards in /boot/config.txt"
-sed -i -e 's/dtparam=audio=on/ dtparam=audio=off/' /boot/config.txt
+set_spi_on
+disable_default_audio
 
 # Installing third-party dependencies
 if [ ! -f "$portaudio_lib" ] ; then
@@ -496,6 +599,7 @@ popd
 # Copy the asound file
 echo_info "Copying the suecreek asound.conf file"
 cp "$ASOUND_CONFIG_FILE" /etc/asound.conf
+check_error "Failed to copy the asound.conf"
 
 # Generating start script
 echo_info "Generating '$startsample_script'"
@@ -509,10 +613,7 @@ echo "#!/bin/bash" > $startsample_script
 echo "cd $sdk_build/SampleApp/src/" >> $startsample_script
 echo "TZ=UTC ./SampleApp $config_dest" >> $startsample_script
 
-if [ $(grep -c "snd_soc_s1000" /etc/modules) -eq 0 ]; then
-    echo "snd_soc_s1000" >> /etc/modules
-    echo "snd_soc_s1000_mach" >> /etc/modules
-fi
+add_modules
 
 generate_json_config
 echo_warn "Please reboot your system"
