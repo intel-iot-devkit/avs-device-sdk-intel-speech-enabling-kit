@@ -182,9 +182,10 @@ function generate_json_config() {
     pid=$!
     check_error "Failed to start the authentication web server"
 
-    echo_info "Launching web browser"
-    python -mwebbrowser http://localhost:3000
-
+    #echo_info "Launching web browser"
+    #python -mwebbrowser http://localhost:3000
+    echo_info "Open up localhost:3000 in your chromium browser to complete the setup"
+   
     # Keep script running until the AuthServer terminates 
     trap "kill $pid 2> /dev/null" EXIT
     while kill -0 $pid 2> /dev/null; do
