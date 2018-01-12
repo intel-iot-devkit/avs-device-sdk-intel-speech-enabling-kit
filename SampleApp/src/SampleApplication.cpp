@@ -1,7 +1,7 @@
 /*
  * SampleApplication.cpp
  *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright (c) 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@
 #include <Audio/AudioFactory.h>
 #include <AuthDelegate/AuthDelegate.h>
 #include <MediaPlayer/MediaPlayer.h>
+#include <Notifications/SQLiteNotificationsStorage.h>
 #include <Settings/SQLiteSettingStorage.h>
 
 #include <algorithm>
@@ -71,7 +72,10 @@ static const size_t BUFFER_SIZE_IN_SAMPLES = (SAMPLE_RATE_HZ)*AMOUNT_OF_AUDIO_DA
 /// Key for the root node value containing configuration values for SampleApp.
 static const std::string SAMPLE_APP_CONFIG_KEY("sampleApp");
 
-/// Key for the endpoint value under the @c SAMPLE_APP_CONFIG_KEY configuration node.
+/// Key for the @c firmwareVersion value under the @c SAMPLE_APP_CONFIG_KEY configuration node.
+static const std::string FIRMWARE_VERSION_KEY("firmwareVersion");
+
+/// Key for the @c endpoint value under the @c SAMPLE_APP_CONFIG_KEY configuration node.
 static const std::string ENDPOINT_KEY("endpoint");
 
 /// Key for setting if display cards are supported or not under the @c SAMPLE_APP_CONFIG_KEY configuration node.
@@ -152,9 +156,18 @@ SampleApplication::~SampleApplication() {
     m_userInputManager.reset();
 
     // Now it's safe to shut down the MediaPlayers.
-    m_speakMediaPlayer->shutdown();
-    m_audioMediaPlayer->shutdown();
-    m_alertsMediaPlayer->shutdown();
+    if (m_speakMediaPlayer) {
+        m_speakMediaPlayer->shutdown();
+    }
+    if (m_audioMediaPlayer) {
+        m_audioMediaPlayer->shutdown();
+    }
+    if (m_alertsMediaPlayer) {
+        m_alertsMediaPlayer->shutdown();
+    }
+    if (m_notificationsMediaPlayer) {
+        m_notificationsMediaPlayer->shutdown();
+    }
 }
 
 bool SampleApplication::initialize(
@@ -202,6 +215,7 @@ bool SampleApplication::initialize(
     }
 
     auto config = alexaClientSDK::avsCommon::utils::configuration::ConfigurationNode::getRoot();
+    auto sampleAppConfig = config[SAMPLE_APP_CONFIG_KEY];
 
     auto httpContentFetcherFactory = std::make_shared<avsCommon::utils::libcurlUtils::HTTPContentFetcherFactory>();
 
@@ -220,6 +234,15 @@ bool SampleApplication::initialize(
         httpContentFetcherFactory, avsCommon::sdkInterfaces::SpeakerInterface::Type::AVS_SYNCED, "AudioMediaPlayer");
     if (!m_audioMediaPlayer) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create media player for content!");
+        return false;
+    }
+
+    m_notificationsMediaPlayer = alexaClientSDK::mediaPlayer::MediaPlayer::create(
+        httpContentFetcherFactory,
+        avsCommon::sdkInterfaces::SpeakerInterface::Type::AVS_SYNCED,
+        "NotificationsMediaPlayer");
+    if (!m_notificationsMediaPlayer) {
+        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create media player for notifications!");
         return false;
     }
 
@@ -245,12 +268,21 @@ bool SampleApplication::initialize(
         std::static_pointer_cast<alexaClientSDK::avsCommon::sdkInterfaces::SpeakerInterface>(m_audioMediaPlayer);
     std::shared_ptr<alexaClientSDK::avsCommon::sdkInterfaces::SpeakerInterface> alertsSpeaker =
         std::static_pointer_cast<alexaClientSDK::avsCommon::sdkInterfaces::SpeakerInterface>(m_alertsMediaPlayer);
+    std::shared_ptr<alexaClientSDK::avsCommon::sdkInterfaces::SpeakerInterface> notificationsSpeaker =
+        std::static_pointer_cast<alexaClientSDK::avsCommon::sdkInterfaces::SpeakerInterface>(
+            m_notificationsMediaPlayer);
 
     auto audioFactory = std::make_shared<alexaClientSDK::applicationUtilities::resources::audio::AudioFactory>();
 
     // Creating the alert storage object to be used for rendering and storing alerts.
     auto alertStorage =
         std::make_shared<alexaClientSDK::capabilityAgents::alerts::storage::SQLiteAlertStorage>(audioFactory->alerts());
+
+    /*
+     * Creating notifications storage object to be used for storing notification indicators.
+     */
+    auto notificationsStorage =
+        std::make_shared<alexaClientSDK::capabilityAgents::notifications::SQLiteNotificationsStorage>();
 
     /*
      * Creating settings storage object to be used for storing <key, value> pairs of AVS Settings.
@@ -277,6 +309,10 @@ bool SampleApplication::initialize(
 
     authDelegate->addAuthObserver(connectionObserver);
 
+    // INVALID_FIRMWARE_VERSION is passed to @c getInt() as a default in case FIRMWARE_VERSION_KEY is not found.
+    int firmwareVersion = static_cast<int>(avsCommon::sdkInterfaces::softwareInfo::INVALID_FIRMWARE_VERSION);
+    sampleAppConfig.getInt(FIRMWARE_VERSION_KEY, &firmwareVersion, firmwareVersion);
+
     /*
      * Creating the DefaultClient - this component serves as an out-of-box default object that instantiates and "glues"
      * together all the modules.
@@ -286,15 +322,21 @@ bool SampleApplication::initialize(
             m_speakMediaPlayer,
             m_audioMediaPlayer,
             m_alertsMediaPlayer,
+            m_notificationsMediaPlayer,
             speakSpeaker,
             audioSpeaker,
             alertsSpeaker,
+            notificationsSpeaker,
             audioFactory,
             authDelegate,
             alertStorage,
+            notificationsStorage,
             settingsStorage,
             {userInterfaceManager},
-            {connectionObserver, userInterfaceManager});
+            {connectionObserver, userInterfaceManager},
+            firmwareVersion,
+            true,
+            nullptr);
 
     if (!client) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create default SDK client!");
@@ -312,7 +354,7 @@ bool SampleApplication::initialize(
     }
 
     std::string endpoint;
-    config[SAMPLE_APP_CONFIG_KEY].getString(ENDPOINT_KEY, &endpoint);
+    sampleAppConfig.getString(ENDPOINT_KEY, &endpoint);
 
     client->connect(endpoint);
 
@@ -327,6 +369,8 @@ bool SampleApplication::initialize(
     client->sendDefaultSettings();
 
     client->addSpeakerManagerObserver(userInterfaceManager);
+
+    client->addNotificationsObserver(userInterfaceManager);
 
     /*
      * Add GUI Renderer as an observer if display cards are supported.  The default is supported unless specified
