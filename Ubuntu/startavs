@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ ! -d "$HOME/Logs/" ] ; then
+    mkdir $HOME/Logs/
+fi
+
+ts=`date +%b_%a_%d_%Y_%H:%M`
+
+cd [YOUR_ABSOLUTE_PATH_TO_AVS_FOLDER]/avs/sdk-build/SampleApp/src
+TZ=UTC ./SampleApp [YOUR_ABSOLUTE_PATH_TO_AVS_FOLDER]/avs/sdk-build/Integration/AlexaClientSDKConfig.json DEBUG9 2>$HOME/Logs/${ts}_stderr.log | tee $HOME/Logs/${ts}_stdout.log
+
+
+
