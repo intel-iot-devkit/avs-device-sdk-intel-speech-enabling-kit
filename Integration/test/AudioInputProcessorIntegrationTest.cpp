@@ -1,7 +1,7 @@
 /*
- * AudioInputProcessorTest.cpp
+ * AudioInputProcessorIntegrationTest.cpp
  *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -291,7 +291,7 @@ public:
     }
     ~testStateProvider() {
     }
-    void provideState(const unsigned int stateRequestToken) override {
+    void provideState(const NamespaceAndName& nsname, const unsigned int stateRequestToken) override {
         std::ostringstream context;
         context << R"({)"
                    R"("volume":)"
@@ -932,7 +932,7 @@ TEST_F(AudioInputProcessorTest, wakeWordMultiturnWithoutUserResponse) {
  * AudioInputProcessor is then observed to send a Recognize event to AVS which responds with a SetMute and Speak
  * directive.
  */
-TEST_F(AudioInputProcessorTest, tapToTalkJoke) {
+TEST_F(AudioInputProcessorTest, DISABLED_tapToTalkJoke) {
     // Signal to the AIP to start recognizing.
     ASSERT_TRUE(m_tapToTalkButton->startRecognizing(m_AudioInputProcessor, m_TapToTalkAudioProvider));
 
@@ -1819,7 +1819,7 @@ TEST_F(AudioInputProcessorTest, audioWithoutAnyTrigger) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 3) {
-        std::cerr << "USAGE: AudioInputProcessorTest <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder>"
+        std::cerr << "USAGE: " << std::string(argv[0]) << " <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder>"
                   << std::endl;
         return 1;
 

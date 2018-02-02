@@ -1,7 +1,7 @@
 /*
  * InteractionManager.h
  *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright (c) 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_INTERACTION_MANAGER_H_
-#define ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_INTERACTION_MANAGER_H_
+#ifndef ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_INTERACTIONMANAGER_H_
+#define ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_INTERACTIONMANAGER_H_
 
 #include <memory>
 
@@ -25,7 +25,6 @@
 #include <AVSCommon/Utils/RequiresShutdown.h>
 #include <DefaultClient/DefaultClient.h>
 
-#include "GuiRenderer.h"
 #include "PortAudioMicrophoneWrapper.h"
 #include "UIManager.h"
 
@@ -132,6 +131,18 @@ public:
     void speakerControl();
 
     /**
+     * Should be called whenever a users requests to set the firmware version.
+     */
+    void firmwareVersionControl();
+
+    /**
+     * Update the firmware version.
+     *
+     * @param firmwareVersion The new firmware version.
+     */
+    void setFirmwareVersion(avsCommon::sdkInterfaces::softwareInfo::FirmwareVersion firmwareVersion);
+
+    /**
      * Should be called after a user selects a speaker.
      */
     void volumeControl();
@@ -191,4 +202,4 @@ private:
 }  // namespace sampleApp
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_INTERACTION_MANAGER_H_
+#endif  // ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_INTERACTIONMANAGER_H_

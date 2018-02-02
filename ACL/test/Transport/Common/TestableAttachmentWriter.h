@@ -15,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ALEXA_CLIENT_SDK_ACL_TEST_TRANSPORT_TESTABLE_ATTACHMENT_WRITER_H_
-#define ALEXA_CLIENT_SDK_ACL_TEST_TRANSPORT_TESTABLE_ATTACHMENT_WRITER_H_
+#ifndef ALEXA_CLIENT_SDK_ACL_TEST_TRANSPORT_COMMON_TESTABLEATTACHMENTWRITER_H_
+#define ALEXA_CLIENT_SDK_ACL_TEST_TRANSPORT_COMMON_TESTABLEATTACHMENTWRITER_H_
 
 #include <AVSCommon/AVS/Attachment/InProcessAttachmentWriter.h>
 
@@ -42,7 +42,11 @@ public:
         std::shared_ptr<avsCommon::utils::sds::InProcessSDS> dummySDS,
         std::unique_ptr<avsCommon::avs::attachment::AttachmentWriter> writer);
 
-    std::size_t write(const void* buf, std::size_t numBytes, WriteStatus* writeStatus) override;
+    std::size_t write(
+        const void* buf,
+        std::size_t numBytes,
+        WriteStatus* writeStatus,
+        std::chrono::milliseconds timeout) override;
 
     void close() override;
 
@@ -57,4 +61,4 @@ private:
 }  // namespace acl
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_ACL_TEST_TRANSPORT_TESTABLE_ATTACHMENT_WRITER_H_
+#endif  // ALEXA_CLIENT_SDK_ACL_TEST_TRANSPORT_COMMON_TESTABLEATTACHMENTWRITER_H_

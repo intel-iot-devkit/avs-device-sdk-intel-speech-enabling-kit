@@ -1,7 +1,7 @@
 /*
  * SettingsTest.cpp
  *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -422,7 +422,7 @@ TEST_F(SettingsTest, openAndCloseDatabaseTest) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 1) {
-        std::cerr << "USAGE: SettingsTest " << std::endl;
+        std::cerr << "USAGE: " << std::string(argv[0]) << std::endl;
         return 1;
     }
     return RUN_ALL_TESTS();

@@ -1,7 +1,7 @@
 /*
- * SensoryKeyWordDetectorTest.cpp
+ * SensoryKeywordDetectorTest.cpp
  *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -568,7 +568,7 @@ TEST_F(SensoryKeywordTest, getExpectedNumberOfDetectionsInAlexaStopAlexaJokeAudi
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 2) {
-        std::cerr << "USAGE: SensoryKeywordDetectorTest <path_to_inputs_folder>" << std::endl;
+        std::cerr << "USAGE: " << std::string(argv[0]) << " <path_to_inputs_folder>" << std::endl;
         return 1;
     } else {
         alexaClientSDK::kwd::test::inputsDirPath = std::string(argv[1]);
