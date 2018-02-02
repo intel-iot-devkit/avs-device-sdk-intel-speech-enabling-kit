@@ -46,6 +46,7 @@ SDK_TIMER_SHORT_SOUND_FILE_PATH=$(pwd)'/application-necessities/sound-files/med_
 SDK_SQLITE_DATABASE_FILE_PATH=$(pwd)'/application-necessities/alerts.db'
 SDK_SQLITE_SETTINGS_DATABASE_FILE_PATH=$(pwd)'/application-necessities/settings.db'
 SDK_CERTIFIED_SENDER_DATABASE_FILE_PATH=$(pwd)'/application-necessities/certifiedSender.db'
+SDK_NOTIFICATIONS_DATABASE_FILE_PATH=$(pwd)'/application-necessities/notifications.db'
 # Default locale
 SETTING_LOCALE_VALUE='en-US'
 
@@ -207,7 +208,7 @@ check_credentials()
     echo ""
     echo "This value should match your Product ID (or Device Type ID) entered at https://developer.amazon.com/iba-sp/overview.html."
     echo "The information is located in the Products table under the Product ID column."
-    echo "E.g.: RaspberryPi3"
+    echo "E.g.: Ubuntu"
     get_credential 1
     SDK_CONFIG_PRODUCT_ID=$Credential
   fi

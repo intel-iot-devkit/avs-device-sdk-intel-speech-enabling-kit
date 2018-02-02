@@ -81,6 +81,9 @@ static const std::string ENDPOINT_KEY("endpoint");
 /// Key for setting if display cards are supported or not under the @c SAMPLE_APP_CONFIG_KEY configuration node.
 static const std::string DISPLAY_CARD_KEY("displayCardsSupported");
 
+/// Timeout for reset timer - timeout is currently 3 mintues
+static const std::chrono::milliseconds RESET_TIMEOUT = std::chrono::milliseconds(3 * 60 * 1000);
+
 #ifdef KWD_KITTAI
 /// The sensitivity of the Kitt.ai engine.
 static const double KITT_AI_SENSITIVITY = 0.6;
@@ -131,7 +134,7 @@ static alexaClientSDK::avsCommon::utils::logger::Level getLogLevelFromUserInput(
  *private:
 
  */
-// static alexaClientSDK::sampleApp::ConsolePrinter g_consolePrinter;
+static alexaClientSDK::sampleApp::ConsolePrinter g_consolePrinter;
 
 std::unique_ptr<SampleApplication> SampleApplication::create(
     const std::string& pathToConfig,
@@ -550,6 +553,12 @@ bool SampleApplication::initialize(
     auto interactionManager = std::make_shared<alexaClientSDK::sampleApp::InteractionManager>(
         client, micWrapper, userInterfaceManager, holdToTalkAudioProvider, tapToTalkAudioProvider);
 
+#endif
+
+#ifdef KWD_HARDWARE
+    // Stopping the audio stream, which is started by the interaction manager by
+    // default. The hardware KWD needs this to be muted initially.
+    micWrapper->stopStreamingMicrophoneData();
 #endif
 
     client->addAlexaDialogStateObserver(interactionManager);
