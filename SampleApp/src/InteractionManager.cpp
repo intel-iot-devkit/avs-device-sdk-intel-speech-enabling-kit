@@ -28,7 +28,7 @@ InteractionManager::InteractionManager(
     capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider wakeWordAudioProvider,
     bool startPaStream) :
-        RequiresShutdown{"InteractionManager"},
+	    RequiresShutdown{"InteractionManager"},
         m_client{client},
         m_micWrapper{micWrapper},
         m_userInterface{userInterface},
