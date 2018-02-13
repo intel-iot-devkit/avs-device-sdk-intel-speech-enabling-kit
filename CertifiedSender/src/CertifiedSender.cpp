@@ -1,7 +1,7 @@
 /*
  * CertifiedSender.cpp
  *
- * Copyright 2017 Amazon.com, Inc. or its affiliates.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ CertifiedSender::CertifiedMessageRequest::CertifiedMessageRequest(const std::str
 
 void CertifiedSender::CertifiedMessageRequest::exceptionReceived(const std::string& exceptionMessage) {
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_sendMessageStatus = MessageRequestObserverInterface::Status::SERVER_INTERNAL_ERROR;
+    m_sendMessageStatus = MessageRequestObserverInterface::Status::SERVER_INTERNAL_ERROR_V2;
     m_responseReceived = true;
     m_cv.notify_all();
 }

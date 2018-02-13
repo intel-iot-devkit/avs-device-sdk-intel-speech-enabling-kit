@@ -15,8 +15,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_POST_CONNECT_SYNCHRONIZER_H_
-#define ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_POST_CONNECT_SYNCHRONIZER_H_
+#ifndef ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_POSTCONNECTSYNCHRONIZER_H_
+#define ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_POSTCONNECTSYNCHRONIZER_H_
 
 #include <condition_variable>
 #include <memory>
@@ -60,9 +60,11 @@ public:
     void onContextAvailable(const std::string& jsonContext) override;
     void onContextFailure(const avsCommon::sdkInterfaces::ContextRequestError error) override;
 
-    void onServerSideDisconnect() override;
-    void onConnected() override;
-    void onDisconnected(avsCommon::sdkInterfaces::ConnectionStatusObserverInterface::ChangedReason reason) override;
+    void onServerSideDisconnect(std::shared_ptr<TransportInterface> transport) override;
+    void onConnected(std::shared_ptr<TransportInterface> transport) override;
+    void onDisconnected(
+        std::shared_ptr<TransportInterface> transport,
+        avsCommon::sdkInterfaces::ConnectionStatusObserverInterface::ChangedReason reason) override;
 
     void addObserver(std::shared_ptr<PostConnectObserverInterface> observer) override;
     void removeObserver(std::shared_ptr<PostConnectObserverInterface> observer) override;
@@ -129,4 +131,4 @@ private:
 }  // namespace acl
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_POST_CONNECT_SYNCHRONIZER_H_
+#endif  // ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_POSTCONNECTSYNCHRONIZER_H_
