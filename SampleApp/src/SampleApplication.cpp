@@ -134,6 +134,7 @@ static alexaClientSDK::avsCommon::utils::logger::Level getLogLevelFromUserInput(
 
  */
 static alexaClientSDK::sampleApp::ConsolePrinter g_consolePrinter;
+/**
  * Allows the process to ignore the SIGPIPE signal.
  * The SIGPIPE signal may be received when the application performs a write to a closed socket.
  * This is a case that arises in the use of certain networking libraries.
@@ -570,8 +571,8 @@ bool SampleApplication::initialize(
         holdToTalkAudioProvider,
         tapToTalkAudioProvider,
         wakeWordAudioProvider,
-        startPaStream;
-        keywordObserver);
+        keywordObserver,
+		startPaStream);
 
 #else
     // If wake word is not enabled, then creating the interaction manager without a wake word audio provider.

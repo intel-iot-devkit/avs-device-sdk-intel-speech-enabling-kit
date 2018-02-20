@@ -25,10 +25,9 @@ InteractionManager::InteractionManager(
     capabilityAgents::aip::AudioProvider holdToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider wakeWordAudioProvider,
+    std::shared_ptr<sampleApp::KeywordObserver> keywordObserver,
     bool startPaStream) :
 	    RequiresShutdown{"InteractionManager"},
-    std::shared_ptr<sampleApp::KeywordObserver> keywordObserver) :
-        RequiresShutdown{"InteractionManager"},
         m_client{client},
         m_micWrapper{micWrapper},
         m_userInterface{userInterface},
