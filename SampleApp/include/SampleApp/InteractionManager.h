@@ -48,7 +48,8 @@ public:
         capabilityAgents::aip::AudioProvider holdToTalkAudioProvider,
         capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
         capabilityAgents::aip::AudioProvider wakeWordAudioProvider = capabilityAgents::aip::AudioProvider::null(),
-        std::shared_ptr<sampleApp::KeywordObserver> keywordObserver = nullptr);
+        std::shared_ptr<sampleApp::KeywordObserver> keywordObserver = nullptr,
+		bool const startPaStream = true);
         bool startPaStream = true);
 
     /**

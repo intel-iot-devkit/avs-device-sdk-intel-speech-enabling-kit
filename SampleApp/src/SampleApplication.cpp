@@ -124,6 +124,7 @@ static alexaClientSDK::avsCommon::utils::logger::Level getLogLevelFromUserInput(
 }
 
 /**
+/**
  * Allows the process to ignore the SIGPIPE signal.
  * The SIGPIPE signal may be received when the application performs a write to a closed socket.
  * This is a case that arises in the use of certain networking libraries.
