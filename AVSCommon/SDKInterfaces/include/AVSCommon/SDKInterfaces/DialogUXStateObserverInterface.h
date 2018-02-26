@@ -50,7 +50,8 @@ public:
          * speech burst UX moves back to the SPEAKING state. If it was the last
          * SPEAK directive after timeout the UX state moves to the IDLE state.
          */
-        FINISHED
+	FINISHED,
+	MIC_OFF,
     };
 
     /**
@@ -87,6 +88,8 @@ inline std::string DialogUXStateObserverInterface::stateToString(DialogUXState s
             return "SPEAKING";
         case DialogUXState::FINISHED:
             return "FINISHED";
+        case DialogUXState::MIC_OFF:
+	    return "MIC_OFF";
     }
     return "Unknown State";
 }
