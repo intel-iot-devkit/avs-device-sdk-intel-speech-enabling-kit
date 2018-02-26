@@ -16,6 +16,8 @@
  */
 
 #include <sstream>
+#include <iostream>
+#include <fstream>
 
 #include "SampleApp/UIManager.h"
 
@@ -141,6 +143,7 @@ void UIManager::onDialogUXStateChanged(DialogUXState state) {
             return;
         }
         m_dialogState = state;
+        updateLeds();
         printState();
     });
 }
@@ -215,11 +218,47 @@ void UIManager::printErrorScreen() {
 }
 
 void UIManager::microphoneOff() {
-    m_executor.submit([]() { ConsolePrinter::prettyPrint("Microphone Off!"); });
+    m_executor.submit([this]() { onDialogUXStateChanged(DialogUXState::MIC_OFF); });
 }
 
 void UIManager::microphoneOn() {
-    m_executor.submit([this]() { printState(); });
+    m_executor.submit([this]() { onDialogUXStateChanged(DialogUXState::IDLE); });
+}
+
+void UIManager::updateLeds() {
+    /* TODO get LED constants from a header */
+    std::ofstream led_sysfs;
+    int led_state = 0;
+    switch (m_dialogState) {
+    case DialogUXState::IDLE:
+        led_state = 1;
+	break;
+    case DialogUXState::LISTENING:
+        led_state = 2;
+        break;
+    case DialogUXState::THINKING:
+        led_state = 3;
+        break;
+    case DialogUXState::SPEAKING:
+        led_state = 4;
+        break;
+    case DialogUXState::FINISHED:
+        led_state = 1;
+	break;
+    case DialogUXState::MIC_OFF:
+        led_state = 5;
+	break;
+    default:
+        ConsolePrinter::prettyPrint(DialogUXStateObserverInterface::stateToString(m_dialogState));
+	led_state = 1;
+        break;
+    }
+
+    led_sysfs.open("/sys/kernel/pca9956_sue_led/state");
+    if (led_sysfs.is_open()) {
+        led_sysfs << led_state;
+        led_sysfs.close();
+    }
 }
 
 void UIManager::printState() {
@@ -228,28 +267,7 @@ void UIManager::printState() {
     } else if (m_connectionStatus == avsCommon::sdkInterfaces::ConnectionStatusObserverInterface::Status::PENDING) {
         ConsolePrinter::prettyPrint("Connecting...");
     } else if (m_connectionStatus == avsCommon::sdkInterfaces::ConnectionStatusObserverInterface::Status::CONNECTED) {
-        switch (m_dialogState) {
-            case DialogUXState::IDLE:
-                ConsolePrinter::prettyPrint("Alexa is currently idle!");
-                return;
-            case DialogUXState::LISTENING:
-                ConsolePrinter::prettyPrint("Listening...");
-                return;
-            case DialogUXState::THINKING:
-                ConsolePrinter::prettyPrint("Thinking...");
-                return;
-                ;
-            case DialogUXState::SPEAKING:
-                ConsolePrinter::prettyPrint("Speaking...");
-                return;
-            /*
-             * This is an intermediate state after a SPEAK directive is completed. In the case of a speech burst the
-             * next SPEAK could kick in or if its the last SPEAK directive ALEXA moves to the IDLE state. So we do
-             * nothing for this state.
-             */
-            case DialogUXState::FINISHED:
-                return;
-        }
+	ConsolePrinter::prettyPrint(DialogUXStateObserverInterface::stateToString(m_dialogState));
     }
 }
 

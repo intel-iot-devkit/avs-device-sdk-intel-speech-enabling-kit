@@ -5,7 +5,7 @@ sudo apt-get -f install
 sudo apt install bc python python-pip wget git gcc cmake build-essential \
 libsqlite3-dev libcurl4-openssl-dev libfaad-dev libsoup2.4-dev libgcrypt20-dev \
 libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
-libasound2-dev doxygen nghttp2 libnghttp2-dev libssl-dev
+gstreamer1.0-plugins-bad libasound2-dev doxygen nghttp2 libnghttp2-dev libssl-dev
 
 sudo pip install flask requests commentjson
 

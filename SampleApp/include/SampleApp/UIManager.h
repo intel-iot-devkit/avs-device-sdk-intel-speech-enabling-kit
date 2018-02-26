@@ -116,7 +116,7 @@ private:
      * component states. This should only be used within the internal executor.
      */
     void printState();
-
+    void updateLeds();
     /// The current dialog UX state of the SDK
     DialogUXState m_dialogState;
 
