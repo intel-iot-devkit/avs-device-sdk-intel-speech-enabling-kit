@@ -16,13 +16,16 @@ target_include_directories(SampleApp PUBLIC
     "${MediaPlayer_SOURCE_DIR}/include"
     "${DefaultClient_SOURCE_DIR}/include"
     "${AudioResources_SOURCE_DIR}/include"
-    "${PORTAUDIO_INCLUDE_DIR}")
+    "${PORTAUDIO_INCLUDE_DIR}"
+    "${SOCKETIO_INCLUDE_DIR}")
 
 target_link_libraries(SampleApp 
     DefaultClient
     AuthDelegate 
     MediaPlayer 
-    "${PORTAUDIO_LIB_PATH}")
+    "${PORTAUDIO_LIB_PATH}"
+    "${SOCKETIO_LIB_PATH}"
+    "${BOOST_LIB_PATH}")
 
 if(KITTAI_KEY_WORD_DETECTOR)
     target_link_libraries(SampleApp 
