@@ -2,12 +2,18 @@
 
 sudo apt-get -f install
 
+# get version 9 of nodejs
+curl -sL https://deb.nodesource.com/setup_9.x | sudo -E bash -
+
 sudo apt install bc python python-pip wget git gcc cmake build-essential \
 libsqlite3-dev libcurl4-openssl-dev libfaad-dev libsoup2.4-dev libgcrypt20-dev \
 libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
-gstreamer1.0-plugins-bad libasound2-dev doxygen nghttp2 libnghttp2-dev libssl-dev
+gstreamer1.0-plugins-bad libasound2-dev doxygen nghttp2 libnghttp2-dev libssl-dev \
+redis-server nodejs
 
 sudo pip install flask requests commentjson
+# needed for display server
+sudo npm install @angular/cli
 
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_URL="http://www.portaudio.com/archives/$PORT_AUDIO_TAR"
@@ -53,6 +59,11 @@ if [ ! -d $third_party_dir/socket.io-client-cpp ]; then
     cmake -DBOOST_ROOT:STRING=$BOOST_ROOT -DBOOST_VER:STRING=$BOOST_VER ./
     make -j4 && sudo make install
 fi
+
+if [ ! -d $third_party_dir/iot-server ]; then
+    echo "Missing iot-server.tar.gz: no display server"
+fi
+
 
 cd $avs_top
 
