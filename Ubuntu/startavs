@@ -11,7 +11,7 @@ if [ -d "/sys/kernel/pca9956_sue_led/" ] ; then
     echo 1 > /sys/kernel/pca9956_sue_led/init
 fi
 
-firefox -new-window https://alexa.amazon.com &
+firefox -new-tab http://localhost:3001 &
 
 cd [AVSROOT]/sdk-build/SampleApp/src
 TZ=UTC ./SampleApp [AVSROOT]/sdk-build/Integration/AlexaClientSDKConfig.json DEBUG9 2>$HOME/Logs/${ts}_stderr.log | tee $HOME/Logs/${ts}_stdout.log

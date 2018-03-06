@@ -37,6 +37,8 @@ public:
     void renderPlayerInfoCard(const std::string& jsonPayload, TemplateRuntimeObserverInterface::AudioPlayerInfo info)
         override;
     /// @}
+private:
+    void sendDisplayServer(const std::string& jsonPayload);
 };
 
 }  // namespace sampleApp
