@@ -20,6 +20,10 @@
 #include "SampleApp/ConsolePrinter.h"
 #include "SampleApp/GuiRenderer.h"
 
+#include "sio_client.h"
+#include <chrono>
+#include <thread>
+
 namespace alexaClientSDK {
 namespace sampleApp {
 
@@ -47,6 +51,27 @@ static const std::string RENDER_PLAYER_INFO_HEADER =
     "##############################################################################\n"
     "#     RenderPlayerInfoCard                                                    \n"
     "#-----------------------------------------------------------------------------\n";
+
+
+void GuiRenderer::sendDisplayServer(const std::string& jsonPayload) {
+    static sio::client disp_server;
+    static const std::string DISP_SERVER = "http://localhost:3001";
+
+    if (!disp_server.opened()) {
+        disp_server.connect(DISP_SERVER);
+
+        int max_msleep = 25;
+        while ((max_msleep-- > 0) && !disp_server.opened()){
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    if (disp_server.opened()) {
+        disp_server.socket()->emit("broadcast", jsonPayload);
+    } else {
+        ConsolePrinter::simplePrint("No display server connection.");
+    }
+}
 
 void GuiRenderer::renderTemplateCard(const std::string& jsonPayload) {
     rapidjson::Document payload;
@@ -82,6 +107,7 @@ void GuiRenderer::renderTemplateCard(const std::string& jsonPayload) {
     buffer += RENDER_FOOTER;
 #endif
     ConsolePrinter::simplePrint(buffer);
+    sendDisplayServer(jsonPayload);
 }
 
 void GuiRenderer::renderPlayerInfoCard(
@@ -109,6 +135,8 @@ void GuiRenderer::renderPlayerInfoCard(
     buffer += jsonPayload + "\n";
     buffer += RENDER_FOOTER;
     ConsolePrinter::simplePrint(buffer);
+
+    sendDisplayServer(jsonPayload);
 }
 
 }  // namespace sampleApp
