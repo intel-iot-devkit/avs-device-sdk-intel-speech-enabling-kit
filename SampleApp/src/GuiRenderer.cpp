@@ -44,6 +44,11 @@ static const std::string RENDER_TEMPLATE_HEADER =
     "#     RenderTemplateCard                                                      \n"
     "#-----------------------------------------------------------------------------\n";
 
+static const std::string RENDER_TEMPLATE_CLEARED =
+    "##############################################################################\n"
+    "#     RenderTemplateCard - Cleared                                            \n"
+    "##############################################################################\n";
+
 static const std::string RENDER_FOOTER =
     "##############################################################################\n";
 
@@ -97,8 +102,8 @@ void GuiRenderer::renderTemplateCard(const std::string& jsonPayload) {
 
     // Storing the output in a single buffer so that the display is continuous.
     std::string buffer;
-
     buffer += RENDER_TEMPLATE_HEADER;
+    buffer += "# Focus State         : " + focusStateToString(focusState) + "\n";
     buffer += "# Template Type       : " + templateType + "\n";
     buffer += "# Main Title          : " + mainTitle + "\n";
     buffer += RENDER_FOOTER;
@@ -110,9 +115,14 @@ void GuiRenderer::renderTemplateCard(const std::string& jsonPayload) {
     sendDisplayServer(jsonPayload);
 }
 
+void GuiRenderer::clearTemplateCard() {
+    ConsolePrinter::simplePrint(RENDER_TEMPLATE_CLEARED);
+}
+
 void GuiRenderer::renderPlayerInfoCard(
     const std::string& jsonPayload,
-    TemplateRuntimeObserverInterface::AudioPlayerInfo info) {
+    TemplateRuntimeObserverInterface::AudioPlayerInfo info,
+    avsCommon::avs::FocusState focusState) {
     rapidjson::Document payload;
     rapidjson::ParseResult result = payload.Parse(jsonPayload);
     if (!result) {
@@ -126,8 +136,8 @@ void GuiRenderer::renderPlayerInfoCard(
 
     // Storing the output in a single buffer so that the display is continuous.
     std::string buffer;
-
     buffer += RENDER_PLAYER_INFO_HEADER;
+    buffer += "# Focus State         : " + focusStateToString(focusState) + "\n";
     buffer += "# AudioItemId         : " + audioItemId + "\n";
     buffer += "# Audio state         : " + playerActivityToString(info.audioPlayerState) + "\n";
     buffer += "# Offset milliseconds : " + std::to_string(info.offset.count()) + "\n";
@@ -135,8 +145,10 @@ void GuiRenderer::renderPlayerInfoCard(
     buffer += jsonPayload + "\n";
     buffer += RENDER_FOOTER;
     ConsolePrinter::simplePrint(buffer);
+}
 
-    sendDisplayServer(jsonPayload);
+void GuiRenderer::clearPlayerInfoCard() {
+    ConsolePrinter::simplePrint(RENDER_PLAYER_INFO_CLEARED);
 }
 
 }  // namespace sampleApp
