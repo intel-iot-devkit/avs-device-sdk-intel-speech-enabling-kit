@@ -30,34 +30,19 @@ int main(int argc, char** argv) {
     std::string pathToConfig;
     std::string pathToInputFolder;
     std::string logLevel;
+    std::string hwName;
 
-#if defined(KWD_KITTAI) || defined(KWD_SENSORY)
-    if (argc < 3) {
+    if (argc < 4) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-            "USAGE: " + std::string(argv[0]) +
-            " <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder> [log_level]");
-        return EXIT_FAILURE;
-    } else {
-        pathToInputFolder = std::string(argv[2]);
-        if (4 == argc) {
-            logLevel = std::string(argv[3]);
-        }
-    }
-#else
-    if (argc < 2) {
-        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint(
-            "USAGE: " + std::string(argv[0]) + " <path_to_AlexaClientSDKConfig.json> [log_level]");
+            "USAGE: " + std::string(argv[0]) + " <path_to_AlexaClientSDKConfig.json> <log_level> <hw_name>");
         return EXIT_FAILURE;
     }
-    if (3 == argc) {
-        logLevel = std::string(argv[2]);
-    }
-#endif
-
+    hwName = std::string(argv[3]);
+    logLevel = std::string(argv[2]);
     pathToConfig = std::string(argv[1]);
 
     auto sampleApplication =
-        alexaClientSDK::sampleApp::SampleApplication::create(pathToConfig, pathToInputFolder, logLevel);
+        alexaClientSDK::sampleApp::SampleApplication::create(pathToConfig, pathToInputFolder, logLevel, hwName);
     if (!sampleApplication) {
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create to SampleApplication!");
         return EXIT_FAILURE;

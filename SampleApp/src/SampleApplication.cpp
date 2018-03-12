@@ -151,9 +151,10 @@ static bool ignoreSigpipeSignals() {
 std::unique_ptr<SampleApplication> SampleApplication::create(
     const std::string& pathToConfig,
     const std::string& pathToInputFolder,
-    const std::string& logLevel) {
+    const std::string& logLevel,
+    const std::string& hwName) {
     auto clientApplication = std::unique_ptr<SampleApplication>(new SampleApplication);
-    if (!clientApplication->initialize(pathToConfig, pathToInputFolder, logLevel)) {
+    if (!clientApplication->initialize(pathToConfig, pathToInputFolder, logLevel, hwName)) {
         ConsolePrinter::simplePrint("Failed to initialize SampleApplication");
         return nullptr;
     } else {
@@ -196,7 +197,8 @@ SampleApplication::~SampleApplication() {
 bool SampleApplication::initialize(
     const std::string& pathToConfig,
     const std::string& pathToInputFolder,
-    const std::string& logLevel) {
+    const std::string& logLevel,
+    const std::string& hwName) {
     /*
      * Set up the SDK logging system to write to the SampleApp's ConsolePrinter.  Also adjust the logging level
      * if requested.
@@ -523,7 +525,7 @@ bool SampleApplication::initialize(
     std::shared_ptr<kwd::AbstractHardwareController> controller = nullptr;
 
 #if defined(ALSA_HW_CTRL)
-    std::shared_ptr<kwd::AlsaHardwareController> alsaCtrl = kwd::AlsaHardwareController::create("hw:0", "Alexa");
+    std::shared_ptr<kwd::AlsaHardwareController> alsaCtrl = kwd::AlsaHardwareController::create(hwName, "Alexa");
     // Add controller to audio input observers
     client->addAudioInputProcessorObserver(alsaCtrl);
     controller = alsaCtrl;
