@@ -219,7 +219,11 @@ void UIManager::onSetIndicator(avsCommon::avs::IndicatorState state) {
 }
 
 void UIManager::printWelcomeScreen() {
-    m_executor.submit([]() { ConsolePrinter::simplePrint(ALEXA_WELCOME_MESSAGE); });
+    m_executor.submit([this]() {
+        ConsolePrinter::simplePrint(ALEXA_WELCOME_MESSAGE);
+        // ensure that the leds are off
+        updateLeds();
+    });
 }
 
 void UIManager::printHelpScreen() {
