@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
     logLevel = std::string(argv[2]);
     pathToConfig = std::string(argv[1]);
 
+    alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Create to SampleApplication to "+hwName);
     auto sampleApplication =
         alexaClientSDK::sampleApp::SampleApplication::create(pathToConfig, pathToInputFolder, logLevel, hwName);
     if (!sampleApplication) {

@@ -379,6 +379,7 @@ echo -n "Web server starting...."
 python $Origin/sdk-build/AuthServer/AuthServer.py &
 pid=$!
 
+sleep 2
 # Launch a web browser to prompt for sign-in
 python -mwebbrowser http://localhost:3000
 echo "Launching web browser. Do not close this terminal window."

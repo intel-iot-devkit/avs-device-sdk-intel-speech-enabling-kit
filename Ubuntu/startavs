@@ -12,6 +12,12 @@ if [ -d "/sys/kernel/pca9956_sue_led/" ] ; then
 fi
 
 suecard=$(aplay -l|grep s1000|awk -F ":" '{print $1}'|sed -e 's/card //')
+if [[ "$suecard" == "" ]]
+then
+	echo "Could not find SueCreek harware!!"
+	aplay -l
+	exit -1
+fi
 hw_name="hw:$suecard"
 
 # if there is a disp_server running, this will point to it
