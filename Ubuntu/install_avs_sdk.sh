@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 sudo apt-get -f install
 
 # get version 9 of nodejs
@@ -80,28 +82,7 @@ if [[ ! -d sdk-build ]]; then
 mkdir sdk-build
 fi
 
-cd sdk-build && cmake ../avs-device-sdk-intel-speech-enabling-kit \
-    -DCMAKE_PREFIX_PATH=/usr/local \
-    -DCMAKE_BUILD_TYPE=DEBUG \
-    -DHARDWARE_KEY_WORD_DETECTOR=ON \
-    -DALSA_HARDWARE_CONTROLLER=ON \
-    -DGSTREAMER_MEDIA_PLAYER=ON \
-    -DPORTAUDIO=ON \
-    -DPORTAUDIO_LIB_PATH=$third_party_dir/portaudio/lib/.libs/libportaudio.a \
-    -DPORTAUDIO_INCLUDE_DIR=$third_party_dir/portaudio/include \
-    -DSOCKETIO_INCLUDE_DIR=$third_party_dir/socket.io-client-cpp/build/include \
-    -DSOCKETIO_LIB_PATH=$third_party_dir/socket.io-client-cpp/build/lib/Release/libsioclient.a \
-    -DBOOST_LIB_PATH=$BOOST_ROOT/lib/libboost_system.a
-
-
-make -j4
-
-if [ $? -eq 0 ]
-then
-  echo "Successfully built AVS"
-else
-  echo "Build failed!!" >&2
-  exit
-fi
+# call build script
+$DIR/build.sh
 
 echo "Please reboot system if running this script for the first time."
