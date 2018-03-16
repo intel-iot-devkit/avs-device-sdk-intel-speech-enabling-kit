@@ -13,6 +13,12 @@
  * permissions and limitations under the License.
  */
 
+#include <cstring>
+#include <string>
+
+#include <rapidjson/document.h>
+
+#include <AVSCommon/Utils/Configuration/ConfigurationNode.h>
 #include "SampleApp/PortAudioMicrophoneWrapper.h"
 #include "SampleApp/ConsolePrinter.h"
 
@@ -38,6 +44,10 @@ void printPaError(PaError err, std::string msg) {
     os << msg << " : [" << err << "] " << Pa_GetErrorText(err);
     ConsolePrinter::simplePrint(os.str());
 }
+
+static const std::string SAMPLE_APP_CONFIG_ROOT_KEY("sampleApp");
+static const std::string PORTAUDIO_CONFIG_ROOT_KEY("portAudio");
+static const std::string PORTAUDIO_CONFIG_SUGGESTED_LATENCY_KEY("suggestedLatency");
 
 std::unique_ptr<PortAudioMicrophoneWrapper> PortAudioMicrophoneWrapper::create(
     std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer,
@@ -84,12 +94,12 @@ bool PortAudioMicrophoneWrapper::initialize() {
 bool PortAudioMicrophoneWrapper::closeStream() {
     PaError err = Pa_CloseStream(m_paStream);
     if(err != paNoError) {
-        printPaError(err, "Failed to close PortAudio default stream");
+        ConsolePrinter::simplePrint(err, "Failed to close PortAudio default stream");
         return false;
     }
     err = Pa_Terminate();
     if(err != paNoError) {
-        printPaError(err, "Failed to terminate PortAudio");
+        ConsolePrinter::simplePrint(err, "Failed to terminate PortAudio");
         return false;
     }
     return true;
@@ -99,22 +109,48 @@ bool PortAudioMicrophoneWrapper::openStream() {
     PaError err;
     err = Pa_Initialize();
     if (err != paNoError) {
-        printPaError(err, "Failed to initialize PortAudio");
+        ConsolePrinter::simplePrint("Failed to initialize PortAudio");
         return false;
     }
 
-    err = Pa_OpenDefaultStream(
-        &m_paStream,
-        NUM_INPUT_CHANNELS,
-        NUM_OUTPUT_CHANNELS,
-        paInt16,
-        SAMPLE_RATE,
-        PREFERRED_SAMPLES_PER_CALLBACK,
-        PortAudioCallback,
-        this);
+    PaTime suggestedLatency;
+    bool latencyInConfig = getConfigSuggestedLatency(suggestedLatency);
+
+    if (!latencyInConfig) {
+        err = Pa_OpenDefaultStream(
+            &m_paStream,
+            NUM_INPUT_CHANNELS,
+            NUM_OUTPUT_CHANNELS,
+            paInt16,
+            SAMPLE_RATE,
+            PREFERRED_SAMPLES_PER_CALLBACK,
+            PortAudioCallback,
+            this);
+    } else {
+        ConsolePrinter::simplePrint(
+            "PortAudio suggestedLatency has been configured to " + std::to_string(suggestedLatency) + " Seconds");
+
+        PaStreamParameters inputParameters;
+        std::memset(&inputParameters, 0, sizeof(inputParameters));
+        inputParameters.device = Pa_GetDefaultInputDevice();
+        inputParameters.channelCount = NUM_INPUT_CHANNELS;
+        inputParameters.sampleFormat = paInt16;
+        inputParameters.suggestedLatency = suggestedLatency;
+        inputParameters.hostApiSpecificStreamInfo = nullptr;
+
+        err = Pa_OpenStream(
+            &m_paStream,
+            &inputParameters,
+            nullptr,
+            SAMPLE_RATE,
+            PREFERRED_SAMPLES_PER_CALLBACK,
+            paNoFlag,
+            PortAudioCallback,
+            this);
+    }
 
     if (err != paNoError) {
-        printPaError(err, "Failed to open PortAudio default stream");
+        ConsolePrinter::simplePrint("Failed to open PortAudio default stream");
         return false;
     }
     return true;
@@ -129,7 +165,7 @@ bool PortAudioMicrophoneWrapper::startStreamingMicrophoneData() {
 #endif
     PaError err = Pa_StartStream(m_paStream);
     if (err != paNoError) {
-        printPaError(err, "Failed to start PortAudio stream");
+        ConsolePrinter::simplePrint("Failed to start PortAudio stream");
         return false;
     }
     m_streaming = true;
@@ -142,7 +178,7 @@ bool PortAudioMicrophoneWrapper::stopStreamingMicrophoneData() {
         return true;
     PaError err = Pa_StopStream(m_paStream);
     if (err != paNoError) {
-        printPaError(err, "Failed to stop PortAudio stream");
+        ConsolePrinter::simplePrint("Failed to stop PortAudio stream");
         return false;
     }
     m_streaming = false;
@@ -171,6 +207,21 @@ int PortAudioMicrophoneWrapper::PortAudioCallback(
 
 bool PortAudioMicrophoneWrapper::isStreaming() {
     return m_streaming;
+	
+bool PortAudioMicrophoneWrapper::getConfigSuggestedLatency(PaTime& suggestedLatency) {
+    bool latencyInConfig = false;
+    auto config = avsCommon::utils::configuration::ConfigurationNode::getRoot()[SAMPLE_APP_CONFIG_ROOT_KEY]
+                                                                               [PORTAUDIO_CONFIG_ROOT_KEY];
+    if (config) {
+        latencyInConfig = config.getValue(
+            PORTAUDIO_CONFIG_SUGGESTED_LATENCY_KEY,
+            &suggestedLatency,
+            suggestedLatency,
+            &rapidjson::Value::IsDouble,
+            &rapidjson::Value::GetDouble);
+    }
+
+    return latencyInConfig;
 }
 
 }  // namespace sampleApp
