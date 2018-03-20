@@ -146,36 +146,23 @@ bool PortAudioMicrophoneWrapper::openStream() {
     inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency ;
     inputParameters.hostApiSpecificStreamInfo = NULL;
     err = Pa_OpenStream(
-            &m_paStream,
-            NUM_INPUT_CHANNELS,
-            NUM_OUTPUT_CHANNELS,
-            paInt16,
-            SAMPLE_RATE,
-            PREFERRED_SAMPLES_PER_CALLBACK,
-            PortAudioCallback,
-            this);
-    } else {
-        ConsolePrinter::simplePrint(
-            "PortAudio suggestedLatency has been configured to " + std::to_string(suggestedLatency) + " Seconds");
-
-        PaStreamParameters inputParameters;
-        std::memset(&inputParameters, 0, sizeof(inputParameters));
-        inputParameters.device = Pa_GetDefaultInputDevice();
-        inputParameters.channelCount = NUM_INPUT_CHANNELS;
-        inputParameters.sampleFormat = paInt16;
-        inputParameters.suggestedLatency = suggestedLatency;
-        inputParameters.hostApiSpecificStreamInfo = nullptr;
-
-        err = Pa_OpenStream(
-            &m_paStream,
-            &inputParameters,
-            nullptr,
-            SAMPLE_RATE,
-            PREFERRED_SAMPLES_PER_CALLBACK,
-            paNoFlag,
-            PortAudioCallback,
-            this);
-    }
+    PaStreamParameters inputParameters;
+    bzero( &inputParameters, sizeof( inputParameters ) );
+    inputParameters.channelCount = NUM_INPUT_CHANNELS;
+    inputParameters.device = devId;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
+    inputParameters.sampleFormat = paInt16;
+    inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency ;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
+    err = Pa_OpenStream(
+                    &m_paStream,
+                    &inputParameters,
+                    NULL,
+                    srate,
+                    framesPerBuffer,
+                    paNoFlag,
+                    PortAudioCallback,
+                    (void *)this );
 
     if (err != paNoError) {
         printPaError(err, "Failed to open PortAudio default stream");
