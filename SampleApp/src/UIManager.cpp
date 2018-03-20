@@ -16,6 +16,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <unistd.h>
 
 #include "SampleApp/UIManager.h"
 
@@ -30,6 +31,8 @@ namespace sampleApp {
 using namespace avsCommon::sdkInterfaces;
 
 static const std::string VERSION = avsCommon::utils::sdkVersion::getCurrentVersion();
+static const char* LED_CTRL_STATE = "/sys/kernel/avsux/state";
+static const char* LED_CTRL_VOLUME = "/sys/kernel/avsux/volume";
 
 // clang-format off
 static const std::string ALEXA_WELCOME_MESSAGE =
@@ -176,7 +179,7 @@ void UIManager::onDialogUXStateChanged(DialogUXState state) {
             return;
         }
         m_dialogState = state;
-        updateLeds();
+        ledSetState(state);
         printState();
     });
 }
@@ -202,11 +205,14 @@ void UIManager::onSpeakerSettingsChanged(
     const SpeakerManagerObserverInterface::Source& source,
     const SpeakerInterface::Type& type,
     const SpeakerInterface::SpeakerSettings& settings) {
-    m_executor.submit([source, type, settings]() {
+    m_executor.submit([this, source, type, settings]() {
         std::ostringstream oss;
         oss << "SOURCE:" << source << " TYPE:" << type << " VOLUME:" << static_cast<int>(settings.volume)
             << " MUTE:" << settings.mute;
         ConsolePrinter::prettyPrint(oss.str());
+        ledSetVolume(settings.volume);
+        sleep(1);
+        ledSetState(m_dialogState);
     });
 }
 
@@ -222,7 +228,7 @@ void UIManager::printWelcomeScreen() {
     m_executor.submit([this]() {
         ConsolePrinter::simplePrint(ALEXA_WELCOME_MESSAGE);
         // ensure that the leds are off
-        updateLeds();
+        ledSetState(DialogUXState::IDLE);
     });
 }
 
@@ -268,7 +274,11 @@ void UIManager::printErrorScreen() {
 }
 
 void UIManager::microphoneOff() {
-    m_executor.submit([this]() { onDialogUXStateChanged(DialogUXState::MIC_OFF); });
+    m_executor.submit([this]() {
+        ConsolePrinter::prettyPrint("MIC_OFF");
+        onDialogUXStateChanged(DialogUXState::MIC_OFF);
+        ledSetState(DialogUXState::MIC_OFF);
+    });
 }
 
 void UIManager::printResetConfirmation() {
@@ -280,42 +290,62 @@ void UIManager::printResetWarning() {
 }
 
 void UIManager::microphoneOn() {
-    m_executor.submit([this]() { onDialogUXStateChanged(DialogUXState::IDLE); });
+    m_executor.submit([this]() {
+        ConsolePrinter::prettyPrint("MIC_ON");
+        onDialogUXStateChanged(DialogUXState::IDLE);
+        ledSetState(DialogUXState::IDLE);
+    });
 }
 
-void UIManager::updateLeds() {
+void UIManager::ledSetState(DialogUXState state) {
     /* TODO get LED constants from a header */
     std::ofstream led_sysfs;
-    int led_state = 0;
-    switch (m_dialogState) {
+    const char* led_state;
+    switch (state) {
     case DialogUXState::IDLE:
-        led_state = 1;
+        led_state = "idle";
 	break;
     case DialogUXState::LISTENING:
-        led_state = 2;
+        led_state = "listening";
         break;
     case DialogUXState::THINKING:
-        led_state = 3;
+        led_state = "thinking";
         break;
     case DialogUXState::SPEAKING:
-        led_state = 4;
+        led_state = "speaking";
         break;
     case DialogUXState::FINISHED:
-        led_state = 1;
+        led_state = "idle";
 	break;
     case DialogUXState::MIC_OFF:
-        led_state = 5;
+        led_state = "mic_off";
 	break;
     default:
         ConsolePrinter::prettyPrint(DialogUXStateObserverInterface::stateToString(m_dialogState));
-	led_state = 1;
+        led_state = "idle";
         break;
     }
 
-    led_sysfs.open("/sys/kernel/pca9956_sue_led/state");
+    led_sysfs.open(LED_CTRL_STATE);
     if (led_sysfs.is_open()) {
         led_sysfs << led_state;
         led_sysfs.close();
+    }
+}
+
+void UIManager::ledSetVolume(unsigned int volume) {
+    /* TODO get LED constants from a header */
+    std::ofstream volume_sysfs;
+    volume_sysfs.open(LED_CTRL_VOLUME);
+    int led_volume = 0;
+    if ( volume > 0 )
+        led_volume = volume / 10;
+    if ( led_volume > 10 )
+        ConsolePrinter::prettyPrint("Invalid volume!");
+    else if (volume_sysfs.is_open()) {
+        ConsolePrinter::prettyPrint("Setting volume");
+        volume_sysfs << led_volume;
+        volume_sysfs.close();
     }
 }
 
