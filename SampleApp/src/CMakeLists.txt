@@ -28,12 +28,13 @@ target_include_directories(SampleApp PUBLIC
     "${RegistrationManager_SOURCE_DIR}/include"
     "${ESP_SOURCE_DIR}/include"
     "${PORTAUDIO_INCLUDE_DIR}"
-    "${SOCKETIO_INCLUDE_DIR}")
+    "${SOCKETIO_INCLUDE_DIR}") 
 
 target_link_libraries(SampleApp 
     DefaultClient
     AuthDelegate
     MediaPlayer
+    ESP
     "${PORTAUDIO_LIB_PATH}"
     "${SOCKETIO_LIB_PATH}"
     "${BOOST_LIB_PATH}")
