@@ -37,7 +37,7 @@ third_party_dir=$avs_top/third-party
 mkdir -p $third_party_dir
 
 if [[ ! -d $third_party_dir/portaudio ]]; then
-cd $third_party_dir && wget $PORT_AUDIO_URL && tar xvf $PORT_AUDIO_TAR && cd portaudio && ./configure have_jack=no && make -j4
+cd $third_party_dir && wget $PORT_AUDIO_URL && tar xvf $PORT_AUDIO_TAR && cd portaudio && ./configure --with-jack=no && make -j4
 fi
 
 if [[ ! -d $third_party_dir/$CURL_DIR ]]; then
