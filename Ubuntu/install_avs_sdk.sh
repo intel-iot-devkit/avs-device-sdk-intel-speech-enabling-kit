@@ -16,6 +16,8 @@ redis-server nodejs
 sudo pip install flask requests commentjson
 # needed for display server
 sudo npm install @angular/cli
+# needed led sysfs write access
+sudo adduser $USER leds
 
 PORT_AUDIO_TAR="pa_stable_v190600_20161030.tgz"
 PORT_AUDIO_URL="http://www.portaudio.com/archives/$PORT_AUDIO_TAR"
