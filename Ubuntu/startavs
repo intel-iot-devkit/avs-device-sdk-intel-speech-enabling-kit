@@ -6,11 +6,6 @@ fi
 
 ts=`date +%b_%a_%d_%Y_%H:%M`
 
-if [ -d "/sys/kernel/pca9956_sue_led/" ] ; then
-    sudo chown $USER:root /sys/kernel/pca9956_sue_led/*
-    echo 1 > /sys/kernel/pca9956_sue_led/init
-fi
-
 suecard=$(aplay -l|grep s1000|awk -F ":" '{print $1}'|sed -e 's/card //')
 if [[ "$suecard" == "" ]]
 then
@@ -19,9 +14,6 @@ then
 	exit -1
 fi
 hw_name="hw:$suecard"
-
-# if there is a disp_server running, this will point to it
-firefox -new-tab http://localhost:3001 &
 
 cd [AVSROOT]/sdk-build/SampleApp/src
 TZ=UTC ./SampleApp [AVSROOT]/sdk-build/Integration/AlexaClientSDKConfig.json DEBUG9 $hw_name 2>$HOME/Logs/${ts}_stderr.log | tee $HOME/Logs/${ts}_stdout.log
