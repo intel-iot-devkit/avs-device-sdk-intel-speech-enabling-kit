@@ -23,6 +23,7 @@
 #include <AVSCommon/SDKInterfaces/SingleSettingObserverInterface.h>
 #include <AVSCommon/SDKInterfaces/SpeakerInterface.h>
 #include <AVSCommon/SDKInterfaces/SpeakerManagerObserverInterface.h>
+#include <Alerts/AlertObserverInterface.h>
 #include <AVSCommon/Utils/Threading/Executor.h>
 
 namespace alexaClientSDK {
@@ -37,7 +38,8 @@ class UIManager
         , public avsCommon::sdkInterfaces::ConnectionStatusObserverInterface
         , public avsCommon::sdkInterfaces::SingleSettingObserverInterface
         , public avsCommon::sdkInterfaces::SpeakerManagerObserverInterface
-        , public avsCommon::sdkInterfaces::NotificationsObserverInterface {
+        , public avsCommon::sdkInterfaces::NotificationsObserverInterface
+        , public alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface {
 public:
     void onDialogUXStateChanged(DialogUXState state) override;
 
@@ -56,6 +58,15 @@ public:
     // @name NotificationsObserverInterface Functions
     /// @{
     void onSetIndicator(avsCommon::avs::IndicatorState state) override;
+    /// }
+
+
+    // @name AlertObserverInterface Functions
+    /// @{
+    void onAlertStateChange(
+        const std::string& alertToken,
+        alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State state,
+        const std::string& reason = "") override;
     /// }
 
     /**
@@ -140,7 +151,10 @@ private:
      */
     void printState();
 
-    void ledSetState(DialogUXState state);
+    const char* toLedState(DialogUXState state);
+    const char* toLedState(
+        alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State state);
+    void ledSetState(const char* led_state);
     void ledSetVolume(unsigned int volume);
     /// The current dialog UX state of the SDK
     DialogUXState m_dialogState;

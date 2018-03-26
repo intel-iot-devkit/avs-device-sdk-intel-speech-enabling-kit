@@ -179,7 +179,7 @@ void UIManager::onDialogUXStateChanged(DialogUXState state) {
             return;
         }
         m_dialogState = state;
-        ledSetState(state);
+        ledSetState(toLedState(state));
         printState();
     });
 }
@@ -212,7 +212,7 @@ void UIManager::onSpeakerSettingsChanged(
         ConsolePrinter::prettyPrint(oss.str());
         ledSetVolume(settings.volume);
         sleep(1);
-        ledSetState(m_dialogState);
+        ledSetState(toLedState(m_dialogState));
     });
 }
 
@@ -224,11 +224,24 @@ void UIManager::onSetIndicator(avsCommon::avs::IndicatorState state) {
     });
 }
 
+void UIManager::onAlertStateChange(
+    const std::string& alertToken,
+    alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State state,
+    const std::string& reason) {
+    m_executor.submit([this, state]() {
+        std::ostringstream oss;
+        oss << "ALERT STATE: " << state;
+        ConsolePrinter::prettyPrint(oss.str());
+        ledSetState(toLedState(state));
+
+    });
+}
+
 void UIManager::printWelcomeScreen() {
     m_executor.submit([this]() {
         ConsolePrinter::simplePrint(ALEXA_WELCOME_MESSAGE);
         // ensure that the leds are off
-        ledSetState(DialogUXState::IDLE);
+        ledSetState(toLedState(DialogUXState::IDLE));
     });
 }
 
@@ -277,7 +290,7 @@ void UIManager::microphoneOff() {
     m_executor.submit([this]() {
         ConsolePrinter::prettyPrint("MIC_OFF");
         onDialogUXStateChanged(DialogUXState::MIC_OFF);
-        ledSetState(DialogUXState::MIC_OFF);
+        ledSetState(toLedState(DialogUXState::MIC_OFF));
     });
 }
 
@@ -293,18 +306,17 @@ void UIManager::microphoneOn() {
     m_executor.submit([this]() {
         ConsolePrinter::prettyPrint("MIC_ON");
         onDialogUXStateChanged(DialogUXState::IDLE);
-        ledSetState(DialogUXState::IDLE);
+        ledSetState(toLedState(DialogUXState::IDLE));
     });
 }
 
-void UIManager::ledSetState(DialogUXState state) {
-    /* TODO get LED constants from a header */
-    std::ofstream led_sysfs;
+const char* UIManager::toLedState(DialogUXState state)
+{
     const char* led_state;
     switch (state) {
     case DialogUXState::IDLE:
         led_state = "idle";
-	break;
+    break;
     case DialogUXState::LISTENING:
         led_state = "listening";
         break;
@@ -316,16 +328,39 @@ void UIManager::ledSetState(DialogUXState state) {
         break;
     case DialogUXState::FINISHED:
         led_state = "idle";
-	break;
+    break;
     case DialogUXState::MIC_OFF:
         led_state = "mic_off";
-	break;
+    break;
     default:
         ConsolePrinter::prettyPrint(DialogUXStateObserverInterface::stateToString(m_dialogState));
         led_state = "idle";
         break;
     }
+    return led_state;
+}
 
+const char* UIManager::toLedState(
+    alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State state)
+{
+
+
+    const char* led_state;
+    switch (state) {
+    case alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State::STARTED:
+        led_state = "alarm";
+    break;
+    default:
+        led_state = "idle";
+        break;
+    }
+    return led_state;
+}
+
+
+void UIManager::ledSetState(const char* led_state) {
+    /* TODO get LED constants from a header */
+    std::ofstream led_sysfs;
     led_sysfs.open(LED_CTRL_STATE);
     if (led_sysfs.is_open()) {
         led_sysfs << led_state;
