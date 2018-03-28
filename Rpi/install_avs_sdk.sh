@@ -580,6 +580,7 @@ if [[ $compile_sdk_debug == 1 ]] ; then
         -DPORTAUDIO=ON \
         -DPORTAUDIO_LIB_PATH=$portaudio_lib \
         -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
+        -DSOCKETIO_DISPLAY_SERVER=OFF \
         $git_repo
 else
     cmake -DHARDWARE_KEY_WORD_DETECTOR=ON \
@@ -588,6 +589,7 @@ else
         -DPORTAUDIO=ON \
         -DPORTAUDIO_LIB_PATH=$portaudio_lib \
         -DPORTAUDIO_INCLUDE_DIR=$portaudio_include \
+        -DSOCKETIO_DISPLAY_SERVER=OFF \
         $git_repo
 fi
 check_error "CMake failed for building C++ SDK"

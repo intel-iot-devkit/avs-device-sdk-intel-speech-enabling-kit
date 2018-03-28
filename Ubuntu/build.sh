@@ -26,8 +26,8 @@ cmake ../avs-device-sdk-intel-speech-enabling-kit \
     -DPORTAUDIO_INCLUDE_DIR=$THIRD_PARTY/portaudio/include \
     -DSOCKETIO_INCLUDE_DIR=$THIRD_PARTY/socket.io-client-cpp/build/include \
     -DSOCKETIO_LIB_PATH=$THIRD_PARTY/socket.io-client-cpp/build/lib/Release/libsioclient.a \
-    -DBOOST_LIB_PATH=$BOOST_ROOT/lib/libboost_system.a
-
+    -DBOOST_LIB_PATH=$BOOST_ROOT/lib/libboost_system.a \
+    -DSOCKETIO_DISPLAY_SERVER=ON
 
 make -j4
 
