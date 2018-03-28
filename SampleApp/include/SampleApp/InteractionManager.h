@@ -233,6 +233,9 @@ private:
     /// Whether a tap is currently occurring.
     bool m_isTapOccurring;
 
+    /// Whether the microphone is currently turned on.
+    bool m_isMicOn;
+
     /**
      * An internal executor that performs execution of callable objects passed to it sequentially but asynchronously.
      */

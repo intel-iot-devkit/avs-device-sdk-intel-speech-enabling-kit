@@ -288,9 +288,12 @@ void UIManager::printErrorScreen() {
 
 void UIManager::microphoneOff() {
     m_executor.submit([this]() {
-        ConsolePrinter::prettyPrint("MIC_OFF");
+#ifdef PRIVACY_WORKING
         onDialogUXStateChanged(DialogUXState::MIC_OFF);
-        ledSetState(toLedState(DialogUXState::MIC_OFF));
+#else
+        // get rid of this case once privacy mode is working
+        ConsolePrinter::prettyPrint("MIC_OFF skipped");
+#endif
     });
 }
 
@@ -304,9 +307,12 @@ void UIManager::printResetWarning() {
 
 void UIManager::microphoneOn() {
     m_executor.submit([this]() {
-        ConsolePrinter::prettyPrint("MIC_ON");
+#ifdef PRIVACY_WORKING
         onDialogUXStateChanged(DialogUXState::IDLE);
-        ledSetState(toLedState(DialogUXState::IDLE));
+#else
+        // get rid of this case and any #ifdef PRIVACY_WORKING
+        ConsolePrinter::prettyPrint("MIC_ON");
+#endif
     });
 }
 

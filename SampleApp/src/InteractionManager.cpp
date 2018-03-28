@@ -39,7 +39,8 @@ InteractionManager::InteractionManager(
         m_tapToTalkAudioProvider{tapToTalkAudioProvider},
         m_wakeWordAudioProvider{wakeWordAudioProvider},
         m_isHoldOccurring{false},
-        m_isTapOccurring{false}
+        m_isTapOccurring{false},
+        m_isMicOn{true}
 {
     if(startPaStream) {
         m_micWrapper->startStreamingMicrophoneData();
@@ -79,13 +80,18 @@ void InteractionManager::microphoneToggle() {
         if (!m_wakeWordAudioProvider) {
             return;
         }
-        if (m_micWrapper->isStreaming()) {
-            m_micWrapper->stopStreamingMicrophoneData();
+        if (m_isMicOn) {
+            m_isMicOn = false;
+            if (m_micWrapper->isStreaming())
+                m_micWrapper->stopStreamingMicrophoneData();
             m_userInterface->microphoneOff();
         } else {
+            m_isMicOn = true;
+#ifndef KWD_HARDWARE
             m_micWrapper->startStreamingMicrophoneData();
+#endif
             m_userInterface->microphoneOn();
-        }
+	}
     });
 }
 
