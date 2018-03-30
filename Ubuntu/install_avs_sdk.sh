@@ -4,18 +4,13 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 sudo apt-get -f install
 
-# get version 9 of nodejs
-curl -sL https://deb.nodesource.com/setup_9.x | sudo -E bash -
-
-sudo apt install bc python python-pip wget git gcc cmake build-essential \
+sudo apt install -y bc python python-pip wget git gcc cmake build-essential \
 libsqlite3-dev libcurl4-openssl-dev libfaad-dev libsoup2.4-dev libgcrypt20-dev \
 libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
-gstreamer1.0-plugins-bad libasound2-dev doxygen nghttp2 libnghttp2-dev libssl-dev \
-redis-server nodejs
+gstreamer1.0-plugins-bad libasound2-dev doxygen nghttp2 libnghttp2-dev libssl-dev
 
 sudo pip install flask requests commentjson
-# needed for display server
-sudo npm install @angular/cli
+
 # needed led sysfs write access
 sudo adduser $USER leds
 
@@ -65,9 +60,21 @@ if [ ! -d $third_party_dir/socket.io-client-cpp ]; then
 fi
 
 if [ ! -d $third_party_dir/iot-server ]; then
-    echo "Missing iot-server.tar.gz: no display server"
+    echo "No display server"
+    sleep 3
+else
+    cd $third_party_dir/iot-server
+    wget https://deb.nodesource.com/setup_9.x
+    if [[ -s setup_9.x ]]; then
+        # get version 9 of nodejs
+        sudo -E bash ./setup_9.x
+        sudo apt install -y redis-server nodejs ng-common
+        npm install @angular/cli
+    else
+        echo "Could not reach deb.nodesource.com, check network and/or proxy settings"
+    fi
+    rm -f setup_9.x
 fi
-
 
 cd $avs_top
 

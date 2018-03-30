@@ -4,6 +4,15 @@ if [ ! -d "$HOME/Logs/" ] ; then
     mkdir $HOME/Logs/
 fi
 
+if [[ -d [AVSROOT]/third-party/iot-server ]] ; then
+    cd [AVSROOT]
+    gnome-terminal -e avs-device-sdk-intel-speech-enabling-kit/Ubuntu/disp_server_back.sh &
+    sleep 1
+    gnome-terminal -e avs-device-sdk-intel-speech-enabling-kit/Ubuntu/disp_server_front.sh &
+    sleep 1
+    firefox -new-tab http://localhost:3001 &
+fi
+
 ts=`date +%b_%a_%d_%Y_%H:%M`
 
 suecard=$(aplay -l|grep s1000|awk -F ":" '{print $1}'|sed -e 's/card //')
