@@ -1,7 +1,5 @@
 /*
- * MessageRequestObserverInterface.h
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,10 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_INCLUDE_AVS_COMMON_SDK_INTERFACES_MESSAGE_REQUEST_OBSERVER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_INCLUDE_AVS_COMMON_SDK_INTERFACES_MESSAGE_REQUEST_OBSERVER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_INCLUDE_AVSCOMMON_SDKINTERFACES_MESSAGEREQUESTOBSERVERINTERFACE_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_INCLUDE_AVSCOMMON_SDKINTERFACES_MESSAGEREQUESTOBSERVERINTERFACE_H_
+
+#include <iostream>
 
 namespace alexaClientSDK {
 namespace avsCommon {
@@ -55,8 +55,8 @@ public:
         /// The send failed due to an internal error within ACL.
         INTERNAL_ERROR,
 
-        /// The send failed due to an internal error on the server.
-        SERVER_INTERNAL_ERROR,
+        /// The send failed due to an internal error on the server which sends code 500.
+        SERVER_INTERNAL_ERROR_V2,
 
         /// The send failed due to server refusing the request.
         REFUSED,
@@ -68,7 +68,13 @@ public:
         THROTTLED,
 
         /// The access credentials provided to ACL were invalid.
-        INVALID_AUTH
+        INVALID_AUTH,
+
+        /// The send failed due to invalid request sent by the user.
+        BAD_REQUEST,
+
+        /// The send failed due to unknown server error.
+        SERVER_OTHER_ERROR
     };
 
     /*
@@ -87,8 +93,51 @@ public:
     virtual void onExceptionReceived(const std::string& exceptionMessage) = 0;
 };
 
+/**
+ * Write a @c MessageRequestObserverInterface::Status value to an @c ostream as a string.
+ *
+ * @param stream The stream to write the value to.
+ * @param reason The status to write to the @c ostream as a string.
+ * @return The @c ostream that was passed in and written to.
+ */
+inline std::ostream& operator<<(std::ostream& stream, MessageRequestObserverInterface::Status status) {
+    switch (status) {
+        case MessageRequestObserverInterface::Status::PENDING:
+            return stream << "PENDING";
+        case MessageRequestObserverInterface::Status::SUCCESS:
+            return stream << "SUCCESS";
+        case MessageRequestObserverInterface::Status::SUCCESS_NO_CONTENT:
+            return stream << "SUCCESS_NO_CONTENT";
+        case MessageRequestObserverInterface::Status::NOT_CONNECTED:
+            return stream << "NOT_CONNECTED";
+        case MessageRequestObserverInterface::Status::NOT_SYNCHRONIZED:
+            return stream << "NOT_SYNCHRONIZED";
+        case MessageRequestObserverInterface::Status::TIMEDOUT:
+            return stream << "TIMEDOUT";
+        case MessageRequestObserverInterface::Status::PROTOCOL_ERROR:
+            return stream << "PROTOCOL_ERROR";
+        case MessageRequestObserverInterface::Status::INTERNAL_ERROR:
+            return stream << "INTERNAL_ERROR";
+        case MessageRequestObserverInterface::Status::SERVER_INTERNAL_ERROR_V2:
+            return stream << "SERVER_INTERNAL_ERROR_V2";
+        case MessageRequestObserverInterface::Status::REFUSED:
+            return stream << "REFUSED";
+        case MessageRequestObserverInterface::Status::CANCELED:
+            return stream << "CANCELED";
+        case MessageRequestObserverInterface::Status::THROTTLED:
+            return stream << "THROTTLED";
+        case MessageRequestObserverInterface::Status::INVALID_AUTH:
+            return stream << "INVALID_AUTH";
+        case MessageRequestObserverInterface::Status::BAD_REQUEST:
+            return stream << "BAD_REQUEST";
+        case MessageRequestObserverInterface::Status::SERVER_OTHER_ERROR:
+            return stream << "SERVER_OTHER_ERROR";
+    }
+    return stream << "Unknown MessageRequestObserverInterface::Status";
+}
+
 }  // namespace sdkInterfaces
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_INCLUDE_AVS_COMMON_SDK_INTERFACES_MESSAGE_REQUEST_OBSERVER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_INCLUDE_AVSCOMMON_SDKINTERFACES_MESSAGEREQUESTOBSERVERINTERFACE_H_

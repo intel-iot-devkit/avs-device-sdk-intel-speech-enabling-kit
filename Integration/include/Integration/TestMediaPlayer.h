@@ -1,7 +1,5 @@
 /*
- * TestMediaPlayer.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TEST_PLAYER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TEST_PLAYER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TESTMEDIAPLAYER_H_
+#define ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TESTMEDIAPLAYER_H_
 
 #include <chrono>
 #include <condition_variable>
@@ -46,13 +44,16 @@ public:
     ~TestMediaPlayer();
 
     avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId setSource(
-        std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader) override;
+        std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader,
+        const avsCommon::utils::AudioFormat* audioFormat = nullptr) override;
 
     avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId setSource(
         std::shared_ptr<std::istream> stream,
         bool repeat) override;
 
-    avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId setSource(const std::string& url) override;
+    avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId setSource(
+        const std::string& url,
+        std::chrono::milliseconds offset = std::chrono::milliseconds::zero()) override;
 
     bool play(avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId id) override;
 
@@ -64,11 +65,10 @@ public:
 
     std::chrono::milliseconds getOffset(avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId id) override;
 
-    bool setOffset(avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId id, std::chrono::milliseconds offset)
-        override;
-
     void setObserver(
         std::shared_ptr<avsCommon::utils::mediaPlayer::MediaPlayerObserverInterface> playerObserver) override;
+
+    uint64_t getNumBytesBuffered() override;
 
 private:
     /// Observer to notify of state changes.
@@ -86,4 +86,4 @@ private:
 }  // namespace integration
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TEST_PLAYER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TESTMEDIAPLAYER_H_

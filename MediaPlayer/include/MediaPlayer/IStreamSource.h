@@ -1,7 +1,5 @@
 /*
- * IStreamReaderSource.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_ISTREAM_SOURCE_H_
-#define ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_ISTREAM_SOURCE_H_
+#ifndef ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_ISTREAMSOURCE_H_
+#define ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_ISTREAMSOURCE_H_
 
 #include <iostream>
 #include <memory>
@@ -76,6 +74,7 @@ private:
     bool isOpen() override;
     void close() override;
     gboolean handleReadData() override;
+    gboolean handleSeekData(guint64 offset) override;
     /// @}
 
 private:
@@ -89,4 +88,4 @@ private:
 }  // namespace mediaPlayer
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_ISTREAM_SOURCE_H_
+#endif  // ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_ISTREAMSOURCE_H_

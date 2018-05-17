@@ -1,7 +1,5 @@
 /*
- * PortAudioMicrophoneWrapper.h
- *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_PORT_AUDIO_MICROPHONE_WRAPPER_H_
-#define ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_PORT_AUDIO_MICROPHONE_WRAPPER_H_
+#ifndef ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_PORTAUDIOMICROPHONEWRAPPER_H_
+#define ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_PORTAUDIOMICROPHONEWRAPPER_H_
 
 #include <mutex>
 #include <thread>
@@ -102,6 +100,15 @@ private:
     /// Close the stream
     bool closeStream();
 
+    /**
+     * Get the optional config parameter from @c AlexaClientSDKConfig.json
+     * for setting the PortAudio stream's suggested latency.
+     *
+     * @param[out] suggestedLatency The latency as it is configured in the file.
+     * @return  @c true if the suggestedLatency is defined in the config file, @c false otherwise.
+     */
+    bool getConfigSuggestedLatency(PaTime& suggestedLatency);
+
     /// The stream of audio data.
     const std::shared_ptr<avsCommon::avs::AudioInputStream> m_audioInputStream;
 
@@ -125,4 +132,4 @@ private:
 }  // namespace sampleApp
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_PORT_AUDIO_MICROPHONE_WRAPPER_H_
+#endif  // ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_PORTAUDIOMICROPHONEWRAPPER_H_

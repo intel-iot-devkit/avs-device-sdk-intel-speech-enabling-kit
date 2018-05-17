@@ -1,7 +1,5 @@
 /*
- * SensoryKeywordDetector.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_KWD_SENSORY_INCLUDE_KWD_SENSORY_KEY_WORD_DETECTOR_H_
-#define ALEXA_CLIENT_SDK_KWD_SENSORY_INCLUDE_KWD_SENSORY_KEY_WORD_DETECTOR_H_
+#ifndef ALEXA_CLIENT_SDK_KWD_SENSORY_INCLUDE_SENSORY_SENSORYKEYWORDDETECTOR_H_
+#define ALEXA_CLIENT_SDK_KWD_SENSORY_INCLUDE_SENSORY_SENSORYKEYWORDDETECTOR_H_
 
 #include <atomic>
 #include <string>
@@ -153,4 +151,4 @@ private:
 }  // namespace kwd
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_KWD_SENSORY_INCLUDE_KWD_SENSORY_KEY_WORD_DETECTOR_H_
+#endif  // ALEXA_CLIENT_SDK_KWD_SENSORY_INCLUDE_SENSORY_SENSORYKEYWORDDETECTOR_H_

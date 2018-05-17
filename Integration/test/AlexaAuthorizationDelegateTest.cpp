@@ -1,7 +1,5 @@
 /*
- * AlexaAuthorizationDelegateTest.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -114,7 +112,7 @@ TEST_F(AlexaAuthorizationDelegateTest, invalidRefreshTokenWithUnrecoverableError
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 2) {
-        std::cerr << "USAGE: AlexaAuthorizationDelegateTest <path to AlexaClientSDKConfig.json>" << std::endl;
+        std::cerr << "USAGE: " << std::string(argv[0]) << " <path to AlexaClientSDKConfig.json>" << std::endl;
         return 1;
     } else {
         g_configPath = std::string(argv[1]);

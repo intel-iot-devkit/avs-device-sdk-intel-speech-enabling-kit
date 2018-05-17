@@ -1,7 +1,5 @@
 /*
- * AttachmentManagerInterface.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_ATTACHMENT_ATTACHMENT_MANAGER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_ATTACHMENT_ATTACHMENT_MANAGER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_ATTACHMENT_ATTACHMENTMANAGERINTERFACE_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_ATTACHMENT_ATTACHMENTMANAGERINTERFACE_H_
 
 #include <chrono>
 #include <string>
@@ -86,9 +84,12 @@ public:
      * @note Calls to @c createReader and @c createWriter may occur in any order.
      *
      * @param attachmentId The id of the @c Attachment.
+     * @param policy The WriterPolicy that the AttachmentWriter should adhere to.
      * @return An @c AttachmentWriter.
      */
-    virtual std::unique_ptr<AttachmentWriter> createWriter(const std::string& attachmentId) = 0;
+    virtual std::unique_ptr<AttachmentWriter> createWriter(
+        const std::string& attachmentId,
+        utils::sds::WriterPolicy policy = avsCommon::utils::sds::WriterPolicy::ALL_OR_NOTHING) = 0;
 
     /**
      * Returns a pointer to an @c AttachmentReader.
@@ -100,7 +101,7 @@ public:
      */
     virtual std::unique_ptr<AttachmentReader> createReader(
         const std::string& attachmentId,
-        AttachmentReader::Policy policy) = 0;
+        utils::sds::ReaderPolicy policy) = 0;
 };
 
 }  // namespace attachment
@@ -108,4 +109,4 @@ public:
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_ATTACHMENT_ATTACHMENT_MANAGER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_ATTACHMENT_ATTACHMENTMANAGERINTERFACE_H_

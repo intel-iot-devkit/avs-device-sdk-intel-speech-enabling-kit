@@ -1,7 +1,5 @@
 /*
- * AudioPlayerIntegrationTest.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -55,6 +53,8 @@
 #include "Integration/TestDirectiveHandler.h"
 #include "Integration/TestExceptionEncounteredSender.h"
 #include "Integration/TestSpeechSynthesizerObserver.h"
+#include "PlaybackController/PlaybackController.h"
+#include "PlaybackController/PlaybackRouter.h"
 #include "SpeechSynthesizer/SpeechSynthesizer.h"
 #include "System/UserInactivityMonitor.h"
 
@@ -82,6 +82,7 @@ using namespace sdkInterfaces;
 using namespace avsCommon::utils::sds;
 using namespace avsCommon::utils::json;
 using namespace capabilityAgents::aip;
+using namespace capabilityAgents::playbackController;
 using namespace afml;
 using namespace capabilityAgents::speechSynthesizer;
 using namespace capabilityAgents::system;
@@ -298,6 +299,9 @@ protected:
         ASSERT_NE(nullptr, m_contextManager);
         PostConnectObject::init(m_contextManager);
 
+        m_playbackController = PlaybackController::create(m_contextManager, m_avsConnectionManager);
+        m_playbackRouter = PlaybackRouter::create(m_playbackController);
+
 #ifdef GSTREAMER_MEDIA_PLAYER
         m_speakMediaPlayer =
             MediaPlayer::create(std::make_shared<avsCommon::utils::libcurlUtils::HTTPContentFetcherFactory>());
@@ -356,12 +360,13 @@ protected:
             m_avsConnectionManager,
             m_focusManager,
             m_contextManager,
-            m_attachmentManager,
-            m_exceptionEncounteredSender);
+            m_exceptionEncounteredSender,
+            m_dialogUXStateAggregator);
         ASSERT_NE(nullptr, m_speechSynthesizer);
         m_directiveSequencer->addDirectiveHandler(m_speechSynthesizer);
         m_speechSynthesizerObserver = std::make_shared<TestSpeechSynthesizerObserver>();
         m_speechSynthesizer->addObserver(m_speechSynthesizerObserver);
+        m_speechSynthesizer->addObserver(m_dialogUXStateAggregator);
 
 #ifdef GSTREAMER_MEDIA_PLAYER
         m_contentMediaPlayer =
@@ -376,8 +381,8 @@ protected:
             m_avsConnectionManager,
             m_focusManager,
             m_contextManager,
-            m_attachmentManager,
-            m_exceptionEncounteredSender);
+            m_exceptionEncounteredSender,
+            m_playbackRouter);
         ASSERT_NE(nullptr, m_audioPlayer);
         m_directiveSequencer->addDirectiveHandler(m_audioPlayer);
 
@@ -389,6 +394,7 @@ protected:
         m_AudioInputProcessor->shutdown();
         m_directiveSequencer->shutdown();
         m_speechSynthesizer->shutdown();
+
         if (m_audioPlayer) {
             m_audioPlayer->shutdown();
         }
@@ -500,6 +506,8 @@ protected:
     std::shared_ptr<MessageRouter> m_messageRouter;
     std::shared_ptr<TestMessageSender> m_avsConnectionManager;
     std::shared_ptr<TestExceptionEncounteredSender> m_exceptionEncounteredSender;
+    std::shared_ptr<PlaybackController> m_playbackController;
+    std::shared_ptr<PlaybackRouter> m_playbackRouter;
     std::shared_ptr<TestDirectiveHandler> m_directiveHandler;
     std::shared_ptr<DirectiveSequencerInterface> m_directiveSequencer;
     std::shared_ptr<MessageInterpreter> m_messageInterpreter;
@@ -597,24 +605,9 @@ TEST_F(AudioPlayerTest, FlashBriefing) {
     // Ask for a flashbriefing.
     sendAudioFileAsRecognize(RECOGNIZE_FLASHBRIEFING_FILE_NAME);
 
-    bool focusChanged;
-    FocusState state;
-    state = m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged);
-    ASSERT_TRUE(focusChanged);
-    ASSERT_EQ(state, FocusState::BACKGROUND);
-
     // Recognize event is sent.
     TestMessageSender::SendParams sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
     ASSERT_TRUE(checkSentEventName(sendParams, NAME_RECOGNIZE));
-
-    state = m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged);
-    ASSERT_TRUE(focusChanged);
-    ASSERT_EQ(state, FocusState::FOREGROUND);
-
-    state = m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged);
-    if (focusChanged) {
-        ASSERT_EQ(state, FocusState::BACKGROUND);
-    }
 
     // Speech is handled.
     TestMessageSender::SendParams sendStartedParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
@@ -659,12 +652,6 @@ TEST_F(AudioPlayerTest, FlashBriefing) {
         sendFinishedParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
         EXPECT_TRUE(checkSentEventName(sendFinishedParams, NAME_SPEECH_FINISHED));
     }
-
-    state = m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged);
-    ASSERT_EQ(state, FocusState::FOREGROUND);
-
-    m_testContentClient->waitForFocusChange(NO_TIMEOUT_DURATION, &focusChanged);
-    EXPECT_FALSE(focusChanged);
 }
 
 }  // namespace test
@@ -674,7 +661,7 @@ TEST_F(AudioPlayerTest, FlashBriefing) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 3) {
-        std::cerr << "USAGE: AudioPlayerIntegration <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder>"
+        std::cerr << "USAGE: " << std::string(argv[0]) << " <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder>"
                   << std::endl;
         return 1;
 

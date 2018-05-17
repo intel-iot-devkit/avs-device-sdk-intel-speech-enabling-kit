@@ -1,7 +1,5 @@
 /*
- * SpeechSynthesizer.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -58,9 +56,6 @@ static const NamespaceAndName CONTEXT_MANAGER_SPEECH_STATE{NAMESPACE, "SpeechSta
 /// The name of the @c FocusManager channel used by the @c SpeechSynthesizer.
 static const std::string CHANNEL_NAME = FocusManagerInterface::DIALOG_CHANNEL_NAME;
 
-/// The activity Id used with the @c FocusManager by @c SpeechSynthesizer.
-static const std::string FOCUS_MANAGER_ACTIVITY_ID{"SpeechSynthesizer.Speak"};
-
 /// The name of the event to send to the AVS server once audio starting playing.
 static std::string SPEECH_STARTED_EVENT_NAME{"SpeechStarted"};
 
@@ -95,15 +90,15 @@ static const char PLAYER_STATE_PLAYING[] = "PLAYING";
 static const char PLAYER_STATE_FINISHED[] = "FINISHED";
 
 /// The duration to wait for a state change in @c onFocusChanged before failing.
-static const std::chrono::seconds STATE_CHANGE_TIMEOUT{2};
+static const std::chrono::seconds STATE_CHANGE_TIMEOUT{5};
 
 std::shared_ptr<SpeechSynthesizer> SpeechSynthesizer::create(
     std::shared_ptr<MediaPlayerInterface> mediaPlayer,
     std::shared_ptr<MessageSenderInterface> messageSender,
     std::shared_ptr<FocusManagerInterface> focusManager,
     std::shared_ptr<ContextManagerInterface> contextManager,
-    std::shared_ptr<attachment::AttachmentManagerInterface> attachmentManager,
-    std::shared_ptr<ExceptionEncounteredSenderInterface> exceptionSender) {
+    std::shared_ptr<ExceptionEncounteredSenderInterface> exceptionSender,
+    std::shared_ptr<avsCommon::avs::DialogUXStateAggregator> dialogUXStateAggregator) {
     if (!mediaPlayer) {
         ACSDK_ERROR(LX("SpeechSynthesizerCreationFailed").d("reason", "mediaPlayerNullReference"));
         return nullptr;
@@ -120,17 +115,16 @@ std::shared_ptr<SpeechSynthesizer> SpeechSynthesizer::create(
         ACSDK_ERROR(LX("SpeechSynthesizerCreationFailed").d("reason", "contextManagerNullReference"));
         return nullptr;
     }
-    if (!attachmentManager) {
-        ACSDK_ERROR(LX("SpeechSynthesizerCreationFailed").d("reason", "attachmentManagerNullReference"));
-        return nullptr;
-    }
     if (!exceptionSender) {
         ACSDK_ERROR(LX("SpeechSynthesizerCreationFailed").d("reason", "exceptionSenderNullReference"));
         return nullptr;
     }
-    auto speechSynthesizer = std::shared_ptr<SpeechSynthesizer>(new SpeechSynthesizer(
-        mediaPlayer, messageSender, focusManager, contextManager, attachmentManager, exceptionSender));
+    auto speechSynthesizer = std::shared_ptr<SpeechSynthesizer>(
+        new SpeechSynthesizer(mediaPlayer, messageSender, focusManager, contextManager, exceptionSender));
     speechSynthesizer->init();
+
+    dialogUXStateAggregator->addObserver(speechSynthesizer);
+
     return speechSynthesizer;
 }
 
@@ -140,12 +134,12 @@ avsCommon::avs::DirectiveHandlerConfiguration SpeechSynthesizer::getConfiguratio
     return configuration;
 }
 
-void SpeechSynthesizer::addObserver(std::shared_ptr<SpeechSynthesizerObserver> observer) {
+void SpeechSynthesizer::addObserver(std::shared_ptr<SpeechSynthesizerObserverInterface> observer) {
     ACSDK_DEBUG9(LX("addObserver").d("observer", observer.get()));
     m_executor.submit([this, observer]() { m_observers.insert(observer); });
 }
 
-void SpeechSynthesizer::removeObserver(std::shared_ptr<SpeechSynthesizerObserver> observer) {
+void SpeechSynthesizer::removeObserver(std::shared_ptr<SpeechSynthesizerObserverInterface> observer) {
     ACSDK_DEBUG9(LX("removeObserver").d("observer", observer.get()));
     m_executor.submit([this, observer]() { m_observers.erase(observer); }).wait();
 }
@@ -187,6 +181,20 @@ void SpeechSynthesizer::onFocusChanged(FocusState newFocus) {
     if (m_currentState == m_desiredState) {
         return;
     }
+
+    // Set intermediate state to avoid being considered idle
+    switch (newFocus) {
+        case FocusState::FOREGROUND:
+            setCurrentStateLocked(SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS);
+            break;
+        case FocusState::BACKGROUND:
+            setCurrentStateLocked(SpeechSynthesizerObserverInterface::SpeechSynthesizerState::LOSING_FOCUS);
+            break;
+        case FocusState::NONE:
+            // We do not care of other focus states yet
+            break;
+    }
+
     auto messageId = (m_currentInfo && m_currentInfo->directive) ? m_currentInfo->directive->getMessageId() : "";
     m_executor.submit([this]() { executeStateChange(); });
     // Block until we achieve the desired state.
@@ -196,13 +204,16 @@ void SpeechSynthesizer::onFocusChanged(FocusState newFocus) {
     } else {
         ACSDK_ERROR(LX("onFocusChangeFailed").d("reason", "stateChangeTimeout").d("messageId", messageId));
         if (m_currentInfo) {
+            lock.unlock();
             sendExceptionEncounteredAndReportFailed(
                 m_currentInfo, avsCommon::avs::ExceptionErrorType::INTERNAL_ERROR, "stateChangeTimeout");
         }
     }
 }
 
-void SpeechSynthesizer::provideState(const unsigned int stateRequestToken) {
+void SpeechSynthesizer::provideState(
+    const avsCommon::avs::NamespaceAndName& stateProviderName,
+    const unsigned int stateRequestToken) {
     ACSDK_DEBUG9(LX("provideState").d("token", stateRequestToken));
     std::lock_guard<std::mutex> lock(m_mutex);
     auto state = m_currentState;
@@ -268,13 +279,14 @@ void SpeechSynthesizer::onPlaybackStopped(SourceId id) {
 SpeechSynthesizer::SpeakDirectiveInfo::SpeakDirectiveInfo(std::shared_ptr<DirectiveInfo> directiveInfo) :
         directive{directiveInfo->directive},
         result{directiveInfo->result},
+        sendPlaybackStartedMessage{false},
         sendPlaybackFinishedMessage{false},
         sendCompletedMessage{false} {
 }
 
 void SpeechSynthesizer::SpeakDirectiveInfo::clear() {
-    token.clear();
     attachmentReader.reset();
+    sendPlaybackStartedMessage = false;
     sendPlaybackFinishedMessage = false;
     sendCompletedMessage = false;
 }
@@ -284,7 +296,6 @@ SpeechSynthesizer::SpeechSynthesizer(
     std::shared_ptr<MessageSenderInterface> messageSender,
     std::shared_ptr<FocusManagerInterface> focusManager,
     std::shared_ptr<ContextManagerInterface> contextManager,
-    std::shared_ptr<attachment::AttachmentManagerInterface> attachmentManager,
     std::shared_ptr<ExceptionEncounteredSenderInterface> exceptionSender) :
         CapabilityAgent{NAMESPACE, exceptionSender},
         RequiresShutdown{"SpeechSynthesizer"},
@@ -293,10 +304,11 @@ SpeechSynthesizer::SpeechSynthesizer(
         m_messageSender{messageSender},
         m_focusManager{focusManager},
         m_contextManager{contextManager},
-        m_attachmentManager{attachmentManager},
-        m_currentState{SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED},
-        m_desiredState{SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED},
-        m_currentFocus{FocusState::NONE} {
+        m_currentState{SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED},
+        m_desiredState{SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED},
+        m_currentFocus{FocusState::NONE},
+        m_isAlreadyStopping{false},
+        m_initialDialogUXStateReceived{false} {
 }
 
 void SpeechSynthesizer::doShutdown() {
@@ -304,12 +316,14 @@ void SpeechSynthesizer::doShutdown() {
     m_speechPlayer->setObserver(nullptr);
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        if (SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING == m_currentState ||
-            SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING == m_desiredState) {
-            m_desiredState = SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED;
-            m_currentInfo->sendPlaybackFinishedMessage = false;
+        if (SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING == m_currentState ||
+            SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING == m_desiredState) {
+            m_desiredState = SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED;
+            if (m_currentInfo) {
+                m_currentInfo->sendPlaybackFinishedMessage = false;
+            }
             stopPlaying();
-            m_currentState = SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED;
+            m_currentState = SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED;
             lock.unlock();
             releaseForegroundFocus();
         }
@@ -330,7 +344,6 @@ void SpeechSynthesizer::doShutdown() {
     m_messageSender.reset();
     m_focusManager.reset();
     m_contextManager.reset();
-    m_attachmentManager.reset();
     m_observers.clear();
 }
 
@@ -409,8 +422,7 @@ void SpeechSynthesizer::executePreHandleAfterValidation(std::shared_ptr<SpeakDir
         return;
     }
     std::string contentId = urlValue.substr(contentIdPosition + CID_PREFIX.length());
-    speakInfo->attachmentReader =
-        speakInfo->directive->getAttachmentReader(contentId, AttachmentReader::Policy::BLOCKING);
+    speakInfo->attachmentReader = speakInfo->directive->getAttachmentReader(contentId, sds::ReaderPolicy::BLOCKING);
     if (!speakInfo->attachmentReader) {
         const std::string message("getAttachmentReaderFailed");
         ACSDK_ERROR(LX("executePreHandleFailed").d("reason", message));
@@ -427,9 +439,8 @@ void SpeechSynthesizer::executePreHandleAfterValidation(std::shared_ptr<SpeakDir
 
 void SpeechSynthesizer::executeHandleAfterValidation(std::shared_ptr<SpeakDirectiveInfo> speakInfo) {
     m_currentInfo = speakInfo;
-    if (!m_focusManager->acquireChannel(CHANNEL_NAME, shared_from_this(), FOCUS_MANAGER_ACTIVITY_ID)) {
-        static const std::string message =
-            std::string("Could not acquire ") + CHANNEL_NAME + " for " + FOCUS_MANAGER_ACTIVITY_ID;
+    if (!m_focusManager->acquireChannel(CHANNEL_NAME, shared_from_this(), NAMESPACE)) {
+        static const std::string message = std::string("Could not acquire ") + CHANNEL_NAME + " for " + NAMESPACE;
         ACSDK_ERROR(LX("executeHandleFailed")
                         .d("reason", "CouldNotAcquireChannel")
                         .d("messageId", m_currentInfo->directive->getMessageId()));
@@ -480,52 +491,66 @@ void SpeechSynthesizer::executeCancel(std::shared_ptr<DirectiveInfo> info) {
         return;
     }
     std::unique_lock<std::mutex> lock(m_mutex);
-    if (SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED != m_desiredState) {
-        m_desiredState = SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED;
-        if (SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING == m_currentState) {
+    if (SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED != m_desiredState) {
+        m_desiredState = SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED;
+        if (SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING == m_currentState ||
+            SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS == m_currentState) {
             lock.unlock();
-            m_currentInfo->sendPlaybackFinishedMessage = false;
-            m_currentInfo->sendCompletedMessage = false;
+            if (m_currentInfo) {
+                m_currentInfo->sendPlaybackFinishedMessage = false;
+                m_currentInfo->sendCompletedMessage = false;
+            }
             stopPlaying();
         }
     }
 }
 
 void SpeechSynthesizer::executeStateChange() {
-    SpeechSynthesizerObserver::SpeechSynthesizerState newState;
+    SpeechSynthesizerObserverInterface::SpeechSynthesizerState newState;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         newState = m_desiredState;
     }
     ACSDK_DEBUG(LX("executeStateChange").d("newState", newState));
     switch (newState) {
-        case SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING:
-            m_currentInfo->sendPlaybackFinishedMessage = true;
-            m_currentInfo->sendCompletedMessage = true;
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING:
+            if (m_currentInfo) {
+                m_currentInfo->sendPlaybackStartedMessage = true;
+                m_currentInfo->sendPlaybackFinishedMessage = true;
+                m_currentInfo->sendCompletedMessage = true;
+            }
             startPlaying();
             break;
-        case SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED:
-            m_currentInfo->sendPlaybackFinishedMessage = false;
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED:
+            if (m_currentInfo) {
+                m_currentInfo->sendPlaybackFinishedMessage = false;
+            }
             stopPlaying();
+            break;
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS:
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::LOSING_FOCUS:
+            // Nothing to do so far
             break;
     }
 }
 
 void SpeechSynthesizer::executeProvideState(
-    const SpeechSynthesizerObserver::SpeechSynthesizerState& state,
+    const SpeechSynthesizerObserverInterface::SpeechSynthesizerState& state,
     const unsigned int& stateRequestToken) {
     ACSDK_DEBUG(LX("executeProvideState").d("stateRequestToken", stateRequestToken));
     int64_t offsetInMilliseconds = 0;
     StateRefreshPolicy refreshPolicy = StateRefreshPolicy::NEVER;
     std::string speakDirectiveToken;
 
-    if (!m_currentInfo && SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING == state) {
-        ACSDK_ERROR(LX("executeProvideStateFailed").d("reason", "currentInfoIsNull"));
-        return;
-    } else if (SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING == state) {
+    if (SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING == state) {
+        if (!m_currentInfo) {
+            ACSDK_ERROR(LX("executeProvideStateFailed").d("reason", "currentInfoIsNull"));
+            return;
+        }
+
         // We should never be in the PLAYING state without a valid m_mediaSourceId.
         if (MediaPlayerInterface::ERROR == m_mediaSourceId) {
-            ACSDK_ERROR(LX("executeProvideStateGetOffsetFailed")
+            ACSDK_ERROR(LX("executeProvideStateFailed")
                             .d("reason", "invalidMediaSourceId")
                             .d("mediaSourceId", m_mediaSourceId));
             return;
@@ -554,21 +579,27 @@ void SpeechSynthesizer::executeProvideState(
 
 void SpeechSynthesizer::executePlaybackStarted() {
     ACSDK_DEBUG(LX("executePlaybackStarted"));
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        setCurrentStateLocked(SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING);
-    }
-    m_waitOnStateChange.notify_one();
-    auto payload = buildPayload(m_currentInfo->token);
-    if (payload.empty()) {
-        ACSDK_ERROR(
-            LX("executePlaybackStartedFailed").d("reason", "buildPayloadFailed").d("token", m_currentInfo->token));
+    if (!m_currentInfo) {
+        ACSDK_ERROR(LX("executePlaybackStartedIgnored").d("reason", "nullptrDirectiveInfo"));
         return;
     }
-    auto msgIdAndJsonEvent = buildJsonEventString(SPEECH_STARTED_EVENT_NAME, "", payload);
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        setCurrentStateLocked(SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
+    }
+    m_waitOnStateChange.notify_one();
+    if (m_currentInfo->sendPlaybackStartedMessage) {
+        auto payload = buildPayload(m_currentInfo->token);
+        if (payload.empty()) {
+            ACSDK_ERROR(
+                LX("executePlaybackStartedFailed").d("reason", "buildPayloadFailed").d("token", m_currentInfo->token));
+            return;
+        }
+        auto msgIdAndJsonEvent = buildJsonEventString(SPEECH_STARTED_EVENT_NAME, "", payload);
 
-    auto request = std::make_shared<MessageRequest>(msgIdAndJsonEvent.second);
-    m_messageSender->sendMessage(request);
+        auto request = std::make_shared<MessageRequest>(msgIdAndJsonEvent.second);
+        m_messageSender->sendMessage(request);
+    }
 }
 
 void SpeechSynthesizer::executePlaybackFinished() {
@@ -579,10 +610,9 @@ void SpeechSynthesizer::executePlaybackFinished() {
     }
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        setCurrentStateLocked(SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED);
+        setCurrentStateLocked(SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
     }
     m_waitOnStateChange.notify_one();
-    releaseForegroundFocus();
     if (m_currentInfo->sendPlaybackFinishedMessage) {
         auto payload = buildPayload(m_currentInfo->token);
         if (payload.empty()) {
@@ -599,6 +629,7 @@ void SpeechSynthesizer::executePlaybackFinished() {
     if (m_currentInfo->sendCompletedMessage) {
         setHandlingCompleted();
     }
+    resetCurrentInfo();
     {
         std::lock_guard<std::mutex> lock_guard(m_speakInfoQueueMutex);
         m_speakInfoQueue.pop_front();
@@ -616,16 +647,22 @@ void SpeechSynthesizer::executePlaybackError(const avsCommon::utils::mediaPlayer
     }
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        setCurrentStateLocked(SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED);
+        setCurrentStateLocked(SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
     }
     m_waitOnStateChange.notify_one();
     releaseForegroundFocus();
-    sendExceptionEncounteredAndReportFailed(m_currentInfo, avsCommon::avs::ExceptionErrorType::INTERNAL_ERROR, error);
     resetCurrentInfo();
     resetMediaSourceId();
     {
-        std::lock_guard<std::mutex> lock(m_speakInfoQueueMutex);
-        m_speakInfoQueue.clear();
+        std::unique_lock<std::mutex> lock(m_mutex);
+        while (!m_speakInfoQueue.empty()) {
+            auto speakInfo = m_speakInfoQueue.front();
+            m_speakInfoQueue.pop_front();
+            lock.unlock();
+            sendExceptionEncounteredAndReportFailed(
+                speakInfo, avsCommon::avs::ExceptionErrorType::INTERNAL_ERROR, error);
+            lock.lock();
+        }
     }
 }
 
@@ -634,10 +671,16 @@ std::string SpeechSynthesizer::buildState(std::string& token, int64_t offsetInMi
     Document::AllocatorType& alloc = state.GetAllocator();
     state.AddMember(KEY_TOKEN, token, alloc);
     state.AddMember(KEY_OFFSET_IN_MILLISECONDS, offsetInMilliseconds, alloc);
-    if (SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING == m_currentState) {
-        state.AddMember(KEY_PLAYER_ACTIVITY, PLAYER_STATE_PLAYING, alloc);
-    } else {
-        state.AddMember(KEY_PLAYER_ACTIVITY, PLAYER_STATE_FINISHED, alloc);
+
+    switch (m_currentState) {
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING:
+            state.AddMember(KEY_PLAYER_ACTIVITY, PLAYER_STATE_PLAYING, alloc);
+            break;
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED:
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS:
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::LOSING_FOCUS:
+            state.AddMember(KEY_PLAYER_ACTIVITY, PLAYER_STATE_FINISHED, alloc);
+            break;
     }
 
     StringBuffer buffer;
@@ -674,6 +717,9 @@ void SpeechSynthesizer::startPlaying() {
         executePlaybackError(ErrorType::MEDIA_ERROR_INTERNAL_DEVICE_ERROR, "playFailed");
     } else if (!m_speechPlayer->play(m_mediaSourceId)) {
         executePlaybackError(ErrorType::MEDIA_ERROR_INTERNAL_DEVICE_ERROR, "playFailed");
+    } else {
+        // Execution of play is successful.
+        m_isAlreadyStopping = false;
     }
 }
 
@@ -681,31 +727,41 @@ void SpeechSynthesizer::stopPlaying() {
     ACSDK_DEBUG9(LX("stopPlaying"));
     if (MediaPlayerInterface::ERROR == m_mediaSourceId) {
         ACSDK_ERROR(LX("stopPlayingFailed").d("reason", "invalidMediaSourceId").d("mediaSourceId", m_mediaSourceId));
-        executePlaybackError(ErrorType::MEDIA_ERROR_INTERNAL_DEVICE_ERROR, "stopFailed");
+    } else if (m_isAlreadyStopping) {
+        ACSDK_DEBUG9(LX("stopPlayingIgnored").d("reason", "isAlreadyStopping"));
     } else if (!m_speechPlayer->stop(m_mediaSourceId)) {
         executePlaybackError(ErrorType::MEDIA_ERROR_INTERNAL_DEVICE_ERROR, "stopFailed");
+    } else {
+        // Execution of stop is successful.
+        m_isAlreadyStopping = true;
     }
 }
 
-void SpeechSynthesizer::setCurrentStateLocked(SpeechSynthesizerObserver::SpeechSynthesizerState newState) {
+void SpeechSynthesizer::setCurrentStateLocked(SpeechSynthesizerObserverInterface::SpeechSynthesizerState newState) {
+    ACSDK_DEBUG9(LX("setCurrentStateLocked").d("state", newState));
     m_currentState = newState;
-    executeProvideState(m_currentState, 0);
-    // Don't allow any slow observers to block our caller.
-    m_executor.submit([this]() {
-        for (auto observer : m_observers) {
-            observer->onStateChanged(m_currentState);
-        }
-    });
+    switch (newState) {
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING:
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED:
+            executeProvideState(m_currentState, 0);
+            break;
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::LOSING_FOCUS:
+        case SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS:
+            break;
+    }
+    for (auto observer : m_observers) {
+        observer->onStateChanged(m_currentState);
+    }
 }
 
 void SpeechSynthesizer::setDesiredStateLocked(FocusState newFocus) {
     switch (newFocus) {
         case FocusState::FOREGROUND:
-            m_desiredState = SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING;
+            m_desiredState = SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING;
             break;
         case FocusState::BACKGROUND:
         case FocusState::NONE:
-            m_desiredState = SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED;
+            m_desiredState = SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED;
             break;
     }
 }
@@ -726,7 +782,6 @@ void SpeechSynthesizer::setHandlingCompleted() {
     if (m_currentInfo && m_currentInfo->result) {
         m_currentInfo->result->setCompleted();
     }
-    resetCurrentInfo();
 }
 
 void SpeechSynthesizer::sendExceptionEncounteredAndReportFailed(
@@ -739,6 +794,12 @@ void SpeechSynthesizer::sendExceptionEncounteredAndReportFailed(
     }
     speakInfo->clear();
     removeDirective(speakInfo->directive->getMessageId());
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING == m_currentState ||
+        SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS == m_currentState) {
+        lock.unlock();
+        stopPlaying();
+    }
 }
 
 void SpeechSynthesizer::sendExceptionEncounteredAndReportMissingProperty(
@@ -827,6 +888,29 @@ void SpeechSynthesizer::addToDirectiveQueue(std::shared_ptr<SpeakDirectiveInfo> 
 
 void SpeechSynthesizer::resetMediaSourceId() {
     m_mediaSourceId = MediaPlayerInterface::ERROR;
+}
+
+void SpeechSynthesizer::onDialogUXStateChanged(
+    avsCommon::sdkInterfaces::DialogUXStateObserverInterface::DialogUXState newState) {
+    m_executor.submit([this, newState]() { executeOnDialogUXStateChanged(newState); });
+}
+
+void SpeechSynthesizer::executeOnDialogUXStateChanged(
+    avsCommon::sdkInterfaces::DialogUXStateObserverInterface::DialogUXState newState) {
+    if (!m_initialDialogUXStateReceived) {
+        // The initial dialog UX state change call comes from simply registering as an observer; it is not a deliberate
+        // change to the dialog state which should interrupt a recognize event.
+        m_initialDialogUXStateReceived = true;
+        return;
+    }
+    if (newState != avsCommon::sdkInterfaces::DialogUXStateObserverInterface::DialogUXState::IDLE) {
+        return;
+    }
+    if (m_currentFocus != avsCommon::avs::FocusState::NONE &&
+        m_currentState != SpeechSynthesizerObserverInterface::SpeechSynthesizerState::GAINING_FOCUS) {
+        m_focusManager->releaseChannel(CHANNEL_NAME, shared_from_this());
+        m_currentFocus = avsCommon::avs::FocusState::NONE;
+    }
 }
 
 }  // namespace speechSynthesizer

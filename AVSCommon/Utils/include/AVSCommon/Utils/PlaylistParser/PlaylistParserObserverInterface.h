@@ -1,7 +1,5 @@
 /*
- * PlaylistParserObserverInterface.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,9 +13,10 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_PLAYLIST_PARSER_PLAYLIST_PARSER_OBSERVER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_PLAYLIST_PARSER_PLAYLIST_PARSER_OBSERVER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_PLAYLISTPARSER_PLAYLISTPARSEROBSERVERINTERFACE_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_PLAYLISTPARSER_PLAYLISTPARSEROBSERVERINTERFACE_H_
 
+#include <chrono>
 #include <ostream>
 #include <queue>
 #include <string>
@@ -50,6 +49,9 @@ enum class PlaylistParseResult {
  */
 class PlaylistParserObserverInterface {
 public:
+    /// An invalid duration.
+    static constexpr std::chrono::milliseconds INVALID_DURATION = std::chrono::milliseconds(-1);
+
     /**
      * Destructor.
      */
@@ -61,8 +63,16 @@ public:
      * @param requestId The id of the callback to connect this callback to an original request.
      * @param url An entry that has been extracted.
      * @param parseResult The result of parsing the playlist.
+     * @param duration A duration in milliseconds of the playlist entry, if it was able to be deduced based on
+     * available playlist metadata.
+     *
+     * @note This function is always called from a single thread in PlayListParser.
      */
-    virtual void onPlaylistEntryParsed(int requestId, std::string url, PlaylistParseResult parseResult) = 0;
+    virtual void onPlaylistEntryParsed(
+        int requestId,
+        std::string url,
+        PlaylistParseResult parseResult,
+        std::chrono::milliseconds duration = INVALID_DURATION) = 0;
 };
 
 /**
@@ -92,4 +102,4 @@ inline std::ostream& operator<<(std::ostream& stream, const PlaylistParseResult&
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_PLAYLIST_PARSER_PLAYLIST_PARSER_OBSERVER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_PLAYLISTPARSER_PLAYLISTPARSEROBSERVERINTERFACE_H_

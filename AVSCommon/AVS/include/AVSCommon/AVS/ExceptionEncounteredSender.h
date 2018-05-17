@@ -1,7 +1,5 @@
 /*
- * ExceptionEncounteredSender.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_EXCEPTION_ENCOUNTERED_SENDER_H
-#define ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_EXCEPTION_ENCOUNTERED_SENDER_H
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_EXCEPTIONENCOUNTEREDSENDER_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_EXCEPTIONENCOUNTEREDSENDER_H_
 
 #include <memory>
 #include <string>
@@ -71,4 +69,4 @@ private:
 }  // namespace avs
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_EXCEPTION_ENCOUNTERED_SENDER_H
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_EXCEPTIONENCOUNTEREDSENDER_H_

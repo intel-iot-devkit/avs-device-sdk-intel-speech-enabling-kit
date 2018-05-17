@@ -1,7 +1,5 @@
 /*
- * GuiRenderer.h
- *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_GUI_RENDERER_H_
-#define ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_GUI_RENDERER_H_
+#ifndef ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_GUIRENDERER_H_
+#define ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_GUIRENDERER_H_
 
 #include <AVSCommon/SDKInterfaces/TemplateRuntimeObserverInterface.h>
 
@@ -24,7 +22,7 @@ namespace alexaClientSDK {
 namespace sampleApp {
 
 /**
- * A simple class that implments the TemplateRuntimeObserverInterface.  Instead of rendering the
+ * A simple class that implements the TemplateRuntimeObserverInterface.  Instead of rendering the
  * display cards, this class will print out some useful information (e.g. JSON payload)
  * when the renderTemplateCard or renderPlayerInfoCard callbacks are called.
  *
@@ -35,13 +33,19 @@ class GuiRenderer : public avsCommon::sdkInterfaces::TemplateRuntimeObserverInte
 public:
     /// @name TemplateRuntimeObserverInterface Functions
     /// @{
-    void renderTemplateCard(const std::string& jsonPayload) override;
-    void renderPlayerInfoCard(const std::string& jsonPayload, TemplateRuntimeObserverInterface::AudioPlayerInfo info)
-        override;
+    void renderTemplateCard(const std::string& jsonPayload, avsCommon::avs::FocusState focusState) override;
+    void clearTemplateCard() override;
+    void renderPlayerInfoCard(
+        const std::string& jsonPayload,
+        TemplateRuntimeObserverInterface::AudioPlayerInfo info,
+        avsCommon::avs::FocusState focusState) override;
+    void clearPlayerInfoCard() override;
     /// @}
+private:
+    void sendDisplayServer(const std::string& jsonPayload);
 };
 
 }  // namespace sampleApp
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_GUI_RENDERER_H_
+#endif  // ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_GUIRENDERER_H_

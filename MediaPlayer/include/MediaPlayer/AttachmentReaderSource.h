@@ -1,7 +1,5 @@
 /*
- * AttachmentReaderSource.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_ATTACHMENT_READER_SOURCE_H_
-#define ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_ATTACHMENT_READER_SOURCE_H_
+#ifndef ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_ATTACHMENTREADERSOURCE_H_
+#define ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_ATTACHMENTREADERSOURCE_H_
 
 #include <memory>
 
@@ -37,12 +35,13 @@ public:
      *
      * @param pipeline The @c PipelineInterface through which the source of the @c AudioPipeline may be set.
      * @param attachmentReader The @c AttachmentReader from which to create the pipeline source from.
-     *
+     * @param audioFormat The audioFormat to be used when playing raw PCM data.
      * @return An instance of the @c AttachmentReaderSource if successful else a @c nullptr.
      */
     static std::unique_ptr<AttachmentReaderSource> create(
         PipelineInterface* pipeline,
-        std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader);
+        std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader,
+        const avsCommon::utils::AudioFormat* audioFormat);
 
     ~AttachmentReaderSource();
 
@@ -67,6 +66,7 @@ private:
     bool isOpen() override;
     void close() override;
     gboolean handleReadData() override;
+    gboolean handleSeekData(guint64 offset) override;
     /// @}
 
     /// @name RequiresShutdown Functions
@@ -82,4 +82,4 @@ private:
 }  // namespace mediaPlayer
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_ATTACHMENT_READER_SOURCE_H_
+#endif  // ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_ATTACHMENTREADERSOURCE_H_

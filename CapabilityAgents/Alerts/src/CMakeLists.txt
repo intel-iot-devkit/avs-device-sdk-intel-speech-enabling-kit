@@ -12,10 +12,12 @@ add_library(Alerts SHARED
 
 target_include_directories(Alerts PUBLIC
         "${Alerts_SOURCE_DIR}/include"
+        "${AudioResources_SOURCE_DIR}/include"
         "${CertifiedSender_SOURCE_DIR}/include"
-        "${SQLiteStorage_SOURCE_DIR}/include")
+        "${SQLiteStorage_SOURCE_DIR}/include"
+        "${RegistrationManager_SOURCE_DIR}/include")
 
-target_link_libraries(Alerts AVSCommon CertifiedSender SQLiteStorage)
+target_link_libraries(Alerts AudioResources AVSCommon CertifiedSender SQLiteStorage RegistrationManager)
 
 # install target
 asdk_install()

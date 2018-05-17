@@ -1,7 +1,5 @@
 /*
- * SpeakerManagerConstants.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,8 +16,8 @@
 /**
  * @file
  */
-#ifndef ALEXACLIENTSDK_CAPABILITY_AGENTS_SPEAKER_MANAGER_INCLUDE_SPEAKER_MANAGER_SPEAKER_MANAGER_CONSTANTS_H_
-#define ALEXACLIENTSDK_CAPABILITY_AGENTS_SPEAKER_MANAGER_INCLUDE_SPEAKER_MANAGER_SPEAKER_MANAGER_CONSTANTS_H_
+#ifndef ALEXA_CLIENT_SDK_CAPABILITYAGENTS_SPEAKERMANAGER_INCLUDE_SPEAKERMANAGER_SPEAKERMANAGERCONSTANTS_H_
+#define ALEXA_CLIENT_SDK_CAPABILITYAGENTS_SPEAKERMANAGER_INCLUDE_SPEAKERMANAGER_SPEAKERMANAGERCONSTANTS_H_
 
 #include "AVSCommon/AVS/NamespaceAndName.h"
 
@@ -61,4 +59,4 @@ const std::string MUTE_CHANGED = "MuteChanged";
 }  // namespace capabilityAgents
 }  // namespace alexaClientSDK
 
-#endif  // ALEXACLIENTSDK_CAPABILITY_AGENTS_SPEAKER_MANAGER_INCLUDE_SPEAKER_MANAGER_SPEAKER_MANAGER_CONSTANTS_H_
+#endif  // ALEXA_CLIENT_SDK_CAPABILITYAGENTS_SPEAKERMANAGER_INCLUDE_SPEAKERMANAGER_SPEAKERMANAGERCONSTANTS_H_

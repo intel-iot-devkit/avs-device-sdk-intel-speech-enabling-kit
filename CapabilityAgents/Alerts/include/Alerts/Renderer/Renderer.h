@@ -1,7 +1,5 @@
 /*
- * Renderer.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_H_
-#define ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_H_
+#ifndef ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_H_
+#define ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_H_
 
 #include "Alerts/Renderer/RendererInterface.h"
 #include "Alerts/Renderer/RendererObserverInterface.h"
@@ -52,7 +50,7 @@ public:
     void setObserver(std::shared_ptr<RendererObserverInterface> observer) override;
 
     void start(
-        const std::string& localAudioFilePath,
+        std::function<std::unique_ptr<std::istream>()> audioFactory,
         const std::vector<std::string>& urls = std::vector<std::string>(),
         int loopCount = 0,
         std::chrono::milliseconds loopPause = std::chrono::milliseconds{0}) override;
@@ -98,13 +96,14 @@ private:
     /**
      * This function will start rendering audio for the currently active alert.
      *
-     * @param localAudioFilePath The file to be rendered.
+     * @param audioFactory A function that produces a stream of audio that is used for the default if nothing
+     * else is available.
      * @param urls A container of urls to be rendered per the above description.
      * @param loopCount The number of times the urls should be rendered.
      * @param loopPauseInMilliseconds The number of milliseconds to pause between rendering url sequences.
      */
     void executeStart(
-        const std::string& localAudioFilePath,
+        std::function<std::unique_ptr<std::istream>()> audioFactory,
         const std::vector<std::string>& urls,
         int loopCount,
         std::chrono::milliseconds loopPause);
@@ -160,6 +159,16 @@ private:
      */
     void resetSourceId();
 
+    /**
+     * Utility function to handle the rendering of the next audio asset, with respect to @c m_loopCount and @c
+     * m_nextUrlIndexToRender.  If all urls within a loop have completed, and there are further loops to render, this
+     * function will also perform a sleep for the @c m_loopPause duration.
+     *
+     * @return @c true if there are more audio assets to render, and the next one has been successfully sent to the @c
+     * m_mediaPlayer to be played.  Returns @c false otherwise.
+     */
+    bool renderNextAudioAsset();
+
     /// @}
 
     /**
@@ -176,22 +185,21 @@ private:
     /// Our observer.
     std::shared_ptr<RendererObserverInterface> m_observer;
 
-    /// The local audio file to be rendered.  This should always be set as a fallback resource in case the
-    /// rendering of a url happens to fail (eg. network is down at that time).
-    std::string m_localAudioFilePath;
-
     /// An optional sequence of urls to be rendered.  If the vector is empty, m_localAudioFilePath will be
     /// rendered instead.
     std::vector<std::string> m_urls;
 
-    /// The next url in the url vector to render.
-    int m_nextUrlIndexToRender;
+    /// The number of streams that have been rendered during the processing of the current loop.
+    int m_numberOfStreamsRenderedThisLoop;
 
     /// The number of times @c m_urls should be rendered.
     int m_loopCount;
 
     /// The time to pause between the rendering of the @c m_urls sequence.
     std::chrono::milliseconds m_loopPause;
+
+    /// A pointer to a stream to use as the default audio to use when the audio assets aren't available.
+    std::shared_ptr<std::istream> m_defaultAudio;
 
     /// A flag to capture if the renderer has been asked to stop by its owner.
     bool m_isStopping;
@@ -215,4 +223,4 @@ private:
 }  // namespace capabilityAgents
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_H_
+#endif  // ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_H_

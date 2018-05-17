@@ -1,7 +1,5 @@
 /*
- * TimerTest.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -439,7 +437,24 @@ TEST_F(TimerTest, deleteDuringTask) {
     verifyTimestamps(t0, SHORT_DELAY, SHORT_DELAY, Timer::PeriodType::ABSOLUTE, SHORT_DELAY);
 }
 
-/// This test verifies that
+/**
+ * This test verifies that a call to start() succeeds on a timer which was previously stopped while running a task, but
+ * which is inactive at the time the new start() is called.
+ */
+TEST_F(TimerTest, startRunningAfterStopDuringTask) {
+    ASSERT_TRUE(m_timer->start(NO_DELAY, std::bind(&TimerTest::simpleTask, this, MEDIUM_DELAY)).valid());
+    ASSERT_TRUE(m_timer->isActive());
+    std::this_thread::sleep_for(SHORT_DELAY);
+    m_timer->stop();
+    ASSERT_TRUE(waitForInactive());
+    m_timestamps.clear();
+    auto t0 = std::chrono::steady_clock::now();
+    ASSERT_EQ(
+        m_timer->start(MEDIUM_DELAY, std::bind(&TimerTest::simpleTask, this, NO_DELAY)).wait_for(TIMEOUT),
+        std::future_status::ready);
+    ASSERT_TRUE(waitForInactive());
+    verifyTimestamps(t0, MEDIUM_DELAY, MEDIUM_DELAY, Timer::PeriodType::ABSOLUTE, NO_DELAY);
+}
 
 }  // namespace test
 }  // namespace timing

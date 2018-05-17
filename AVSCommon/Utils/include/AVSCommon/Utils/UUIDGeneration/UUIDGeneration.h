@@ -1,7 +1,5 @@
 /*
- * UUIDGeneration.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVSCCOMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_UUID_GENERATION_UUID_GENERATION_H_
-#define ALEXA_CLIENT_SDK_AVSCCOMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_UUID_GENERATION_UUID_GENERATION_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_UUIDGENERATION_UUIDGENERATION_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_UUIDGENERATION_UUIDGENERATION_H_
 
 #include <string>
 
@@ -41,4 +39,4 @@ const std::string generateUUID();
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVSCCOMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_UUID_GENERATION_UUID_GENERATION_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_UUIDGENERATION_UUIDGENERATION_H_

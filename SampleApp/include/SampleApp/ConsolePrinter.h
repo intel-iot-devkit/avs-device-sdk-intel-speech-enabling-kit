@@ -1,7 +1,5 @@
 /*
- * ConsolePrinter.h
- *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,13 +13,14 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_CONSOLE_PRINTER_H_
-#define ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_CONSOLE_PRINTER_H_
+#ifndef ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_CONSOLEPRINTER_H_
+#define ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_CONSOLEPRINTER_H_
 
 #include <mutex>
 #include <string>
 
 #include <AVSCommon/Utils/Logger/Logger.h>
+#include <AVSCommon/Utils/Logger/LogStringFormatter.h>
 
 namespace alexaClientSDK {
 namespace sampleApp {
@@ -66,9 +65,14 @@ private:
      * when called from global's destructor
      */
     std::shared_ptr<std::mutex> m_mutex;
+
+    /**
+     * Object used to format strings for log messages.
+     */
+    avsCommon::utils::logger::LogStringFormatter m_logFormatter;
 };
 
 }  // namespace sampleApp
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_SAMPLE_APP_INCLUDE_SAMPLE_APP_CONSOLE_PRINTER_H_
+#endif  // ALEXA_CLIENT_SDK_SAMPLEAPP_INCLUDE_SAMPLEAPP_CONSOLEPRINTER_H_

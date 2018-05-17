@@ -1,7 +1,5 @@
 /*
- * CapabilityAgent.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,9 +13,10 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_CAPABILITY_AGENT_H
-#define ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_CAPABILITY_AGENT_H
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_CAPABILITYAGENT_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_CAPABILITYAGENT_H_
 
+#include <atomic>
 #include <unordered_map>
 #include <string>
 #include <memory>
@@ -77,7 +76,8 @@ public:
 
     void onFocusChanged(FocusState newFocus) override;
 
-    void provideState(const unsigned int stateRequestToken) override;
+    void provideState(const avsCommon::avs::NamespaceAndName& stateProviderName, const unsigned int stateRequestToken)
+        override;
 
     void onContextAvailable(const std::string& jsonContext) override;
 
@@ -120,6 +120,9 @@ protected:
 
         /// @c DirectiveHandlerResultInterface.
         std::shared_ptr<sdkInterfaces::DirectiveHandlerResultInterface> result;
+
+        /// Flag to indicate whether the directive is cancelled.
+        std::atomic<bool> isCancelled;
     };
 
     /**
@@ -189,6 +192,18 @@ protected:
     void removeDirective(const std::string& messageId);
 
     /**
+     * Send ExceptionEncountered and report a failure to handle the @c AVSDirective.
+     *
+     * @param info The @c AVSDirective that encountered the error and ancillary information.
+     * @param message The error message to include in the ExceptionEncountered message.
+     * @param type The type of Exception that was encountered.
+     */
+    void sendExceptionEncounteredAndReportFailed(
+        std::shared_ptr<DirectiveInfo> info,
+        const std::string& message,
+        avsCommon::avs::ExceptionErrorType type = avsCommon::avs::ExceptionErrorType::INTERNAL_ERROR);
+
+    /**
      * Builds a JSON event string which includes the header, the @c payload and an optional @c context.
      * The header includes the namespace, name, message Id and an optional @c dialogRequestId.
      * The message Id required for the header is a random string that is generated and added to the
@@ -233,4 +248,4 @@ private:
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_CAPABILITY_AGENT_H
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_CAPABILITYAGENT_H_

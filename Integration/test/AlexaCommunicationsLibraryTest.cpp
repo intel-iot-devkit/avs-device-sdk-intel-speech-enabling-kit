@@ -1,7 +1,5 @@
 /*
- * AlexaCommunicationsLibraryTest.cpp
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -284,7 +282,7 @@ public:
 
         // create and return the reader.
         std::shared_ptr<InProcessAttachmentReader> attachmentReader =
-            InProcessAttachmentReader::create(AttachmentReader::Policy::NON_BLOCKING, sds);
+            InProcessAttachmentReader::create(ReaderPolicy::NONBLOCKING, sds);
         EXPECT_NE(attachmentReader, nullptr);
 
         return attachmentReader;
@@ -339,12 +337,12 @@ TEST_F(AlexaCommunicationsLibraryTest, testSendEvent) {
 
 /**
  * Function that tests the behavior of the ACL when an improperly formatted message is sent, expecting the server
- * to return an internal error.
+ * to return a bad request status.
  */
 TEST_F(AlexaCommunicationsLibraryTest, testSendInvalidEvent) {
     sendEvent(
         BAD_SYNCHRONIZE_STATE_JSON,
-        avsCommon::sdkInterfaces::MessageRequestObserverInterface::Status::SERVER_INTERNAL_ERROR,
+        avsCommon::sdkInterfaces::MessageRequestObserverInterface::Status::BAD_REQUEST,
         std::chrono::seconds(10));
 }
 
@@ -480,7 +478,7 @@ TEST_F(AlexaCommunicationsLibraryTest, testMultipleConnectionStatusObservers) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 3) {
-        std::cerr << "USAGE: AlexaCommunicationsLibraryTest <path_to_auth_delgate_config> <path_to_inputs_folder>"
+        std::cerr << "USAGE: " << std::string(argv[0]) << " <path_to_auth_delgate_config> <path_to_inputs_folder>"
                   << std::endl;
         return 1;
     } else {

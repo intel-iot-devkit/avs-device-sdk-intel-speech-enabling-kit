@@ -1,7 +1,5 @@
 /*
- * IStreamSource.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -147,6 +145,12 @@ gboolean IStreamSource::handleReadData() {
 
     gst_buffer_unref(buffer);
     updateOnReadDataHandler();
+    return true;
+}
+
+gboolean IStreamSource::handleSeekData(guint64 offset) {
+    m_stream->clear();
+    m_stream->seekg(offset);
     return true;
 }
 

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ ! -d "$HOME/Logs/" ] ; then
+    mkdir $HOME/Logs/
+fi
+
+if [[ -d [AVSROOT]/third-party/iot-server ]] ; then
+    cd [AVSROOT]
+    gnome-terminal -e avs-device-sdk-intel-speech-enabling-kit/Ubuntu/disp_server_back.sh &
+    sleep 1
+    gnome-terminal -e avs-device-sdk-intel-speech-enabling-kit/Ubuntu/disp_server_front.sh &
+    sleep 1
+    firefox -new-tab http://localhost:3001 &
+fi
+
+ts=`date +%b_%a_%d_%Y_%H:%M`
+
+suecard=$(aplay -l|grep s1000|awk -F ":" '{print $1}'|sed -e 's/card //')
+if [[ "$suecard" == "" ]]
+then
+	echo "Could not find SueCreek harware!!"
+	aplay -l
+	exit -1
+fi
+hw_name="hw:$suecard"
+
+cd [AVSROOT]/sdk-build/SampleApp/src
+TZ=UTC ./SampleApp [AVSROOT]/sdk-build/Integration/AlexaClientSDKConfig.json DEBUG9 $hw_name 2>$HOME/Logs/${ts}_stderr.log | tee $HOME/Logs/${ts}_stdout.log
+
+
+

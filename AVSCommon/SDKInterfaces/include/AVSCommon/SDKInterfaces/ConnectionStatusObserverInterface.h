@@ -1,7 +1,5 @@
 /*
- * ConnectionStatusObserverInterface.h
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_INCLUDE_AVS_COMMON_SDK_INTERFACES_CONNECTION_STATUS_OBSERVER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_INCLUDE_AVS_COMMON_SDK_INTERFACES_CONNECTION_STATUS_OBSERVER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_INCLUDE_AVSCOMMON_SDKINTERFACES_CONNECTIONSTATUSOBSERVERINTERFACE_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_INCLUDE_AVSCOMMON_SDKINTERFACES_CONNECTIONSTATUSOBSERVERINTERFACE_H_
 
 #include <iostream>
 
@@ -185,4 +183,4 @@ inline std::ostream& operator<<(std::ostream& stream, ConnectionStatusObserverIn
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_INCLUDE_AVS_COMMON_SDK_INTERFACES_CONNECTION_STATUS_OBSERVER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_INCLUDE_AVSCOMMON_SDKINTERFACES_CONNECTIONSTATUSOBSERVERINTERFACE_H_

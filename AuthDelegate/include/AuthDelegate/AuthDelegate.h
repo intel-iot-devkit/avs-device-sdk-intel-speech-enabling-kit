@@ -1,7 +1,5 @@
 /*
- * AuthDelegate.h
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AUTHDELEGATE_INCLUDE_AUTHDELEGATE_AUTH_DELEGATE_H_
-#define ALEXA_CLIENT_SDK_AUTHDELEGATE_INCLUDE_AUTHDELEGATE_AUTH_DELEGATE_H_
+#ifndef ALEXA_CLIENT_SDK_AUTHDELEGATE_INCLUDE_AUTHDELEGATE_AUTHDELEGATE_H_
+#define ALEXA_CLIENT_SDK_AUTHDELEGATE_INCLUDE_AUTHDELEGATE_AUTHDELEGATE_H_
 
 #include <chrono>
 #include <condition_variable>
@@ -29,6 +27,7 @@
 #include <AVSCommon/SDKInterfaces/AuthDelegateInterface.h>
 #include <AVSCommon/SDKInterfaces/AuthObserverInterface.h>
 #include <AVSCommon/Utils/LibcurlUtils/HttpPostInterface.h>
+#include <AVSCommon/Utils/RetryTimer.h>
 
 namespace alexaClientSDK {
 namespace authDelegate {
@@ -112,7 +111,7 @@ private:
     /**
      * Attempt to refresh the auth token.
      *
-     * @return @c NO_ERROR if the authorization token is successfully refreshed. Otherwise, return the error encountered
+     * @return @c SUCCESS if the authorization token is successfully refreshed. Otherwise, return the error encountered
      * in the process.
      */
     avsCommon::sdkInterfaces::AuthObserverInterface::Error refreshAuthToken();
@@ -122,7 +121,7 @@ private:
      *
      * @param code The response code returned from the LWA request
      * @param body The response body (if any) returned from the LWA request.
-     * @return @c NO_ERROR if the auth token was refreshed, otherwise the error encountered in the process.
+     * @return @c SUCCESS if the auth token was refreshed, otherwise the error encountered in the process.
      */
     avsCommon::sdkInterfaces::AuthObserverInterface::Error handleLwaResponse(long code, const std::string& body);
 
@@ -234,4 +233,4 @@ private:
 }  // namespace authDelegate
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AUTHDELEGATE_INCLUDE_AUTHDELEGATE_AUTH_DELEGATE_H_
+#endif  // ALEXA_CLIENT_SDK_AUTHDELEGATE_INCLUDE_AUTHDELEGATE_AUTHDELEGATE_H_

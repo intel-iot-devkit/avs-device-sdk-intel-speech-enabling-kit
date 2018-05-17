@@ -1,7 +1,5 @@
 /*
- * LibCurlHttpContentFetcher.cpp
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -14,6 +12,9 @@
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
+
+#include <algorithm>
+
 #include <AVSCommon/Utils/LibcurlUtils/CurlEasyHandleWrapper.h>
 #include <AVSCommon/Utils/LibcurlUtils/LibCurlHttpContentFetcher.h>
 #include <AVSCommon/Utils/Memory/Memory.h>
@@ -28,6 +29,12 @@ namespace libcurlUtils {
 static const std::string TAG("LibCurlHttpContentFetcher");
 
 /**
+ * The timeout for a blocking write call to an @c AttachmentWriter. This value may be increased to decrease wakeups but
+ * may also increase latency.
+ */
+static const std::chrono::milliseconds TIMEOUT_FOR_BLOCKING_WRITE = std::chrono::milliseconds(100);
+
+/**
  * Create a LogEntry using this file's TAG and the specified event string.
  *
  * @param The event string for this @c LogEntry.
@@ -40,7 +47,8 @@ size_t LibCurlHttpContentFetcher::headerCallback(char* data, size_t size, size_t
         return 0;
     }
     std::string line(static_cast<const char*>(data), size * nmemb);
-    if (line.find("HTTP") == 0) {
+    std::transform(line.begin(), line.end(), line.begin(), ::tolower);
+    if (line.find("http") == 0) {
         // To find lines like: "HTTP/1.1 200 OK"
         std::istringstream iss(line);
         std::string httpVersion;
@@ -48,13 +56,18 @@ size_t LibCurlHttpContentFetcher::headerCallback(char* data, size_t size, size_t
         iss >> httpVersion >> statusCode;
         LibCurlHttpContentFetcher* thisObject = static_cast<LibCurlHttpContentFetcher*>(userData);
         thisObject->m_lastStatusCode = statusCode;
-    } else if (line.find("Content-Type") == 0) {
+    } else if (line.find("content-type") == 0) {
         // To find lines like: "Content-Type: audio/x-mpegurl; charset=utf-8"
         std::istringstream iss(line);
         std::string contentTypeBeginning;
         std::string contentType;
         iss >> contentTypeBeginning >> contentType;
-        contentType.pop_back();
+
+        size_t separator = contentType.find(";");
+        if (separator != std::string::npos) {
+            // Remove characters after the separator ;
+            contentType.erase(separator);
+        }
         LibCurlHttpContentFetcher* thisObject = static_cast<LibCurlHttpContentFetcher*>(userData);
         thisObject->m_lastContentType = contentType;
     }
@@ -67,20 +80,51 @@ size_t LibCurlHttpContentFetcher::bodyCallback(char* data, size_t size, size_t n
         return 0;
     }
     LibCurlHttpContentFetcher* thisObject = static_cast<LibCurlHttpContentFetcher*>(userData);
+    if (thisObject->m_done) {
+        // In order to properly quit when downloading live content, which block forever when performing a GET request
+        return 0;
+    }
     if (!thisObject->m_bodyCallbackBegan) {
         thisObject->m_bodyCallbackBegan = true;
         thisObject->m_statusCodePromise.set_value(thisObject->m_lastStatusCode);
         thisObject->m_contentTypePromise.set_value(thisObject->m_lastContentType);
     }
     auto streamWriter = thisObject->m_streamWriter;
+    size_t totalBytesWritten = 0;
+
     if (streamWriter) {
-        avsCommon::avs::attachment::AttachmentWriter::WriteStatus writeStatus =
-            avsCommon::avs::attachment::AttachmentWriter::WriteStatus::OK;
-        auto numBytesWritten = streamWriter->write(data, size * nmemb, &writeStatus);
-        return numBytesWritten;
-    } else {
-        return 0;
+        size_t targetNumBytes = size * nmemb;
+
+        while (totalBytesWritten < targetNumBytes && !thisObject->m_done) {
+            avsCommon::avs::attachment::AttachmentWriter::WriteStatus writeStatus =
+                avsCommon::avs::attachment::AttachmentWriter::WriteStatus::OK;
+
+            size_t numBytesWritten = streamWriter->write(
+                data,
+                targetNumBytes - totalBytesWritten,
+                &writeStatus,
+                std::chrono::milliseconds(TIMEOUT_FOR_BLOCKING_WRITE));
+            totalBytesWritten += numBytesWritten;
+            data += numBytesWritten;
+
+            switch (writeStatus) {
+                case avsCommon::avs::attachment::AttachmentWriter::WriteStatus::CLOSED:
+                case avsCommon::avs::attachment::AttachmentWriter::WriteStatus::ERROR_BYTES_LESS_THAN_WORD_SIZE:
+                case avsCommon::avs::attachment::AttachmentWriter::WriteStatus::ERROR_INTERNAL:
+                    return totalBytesWritten;
+                case avsCommon::avs::attachment::AttachmentWriter::WriteStatus::TIMEDOUT:
+                case avsCommon::avs::attachment::AttachmentWriter::WriteStatus::OK:
+                    // might still have bytes to write
+                    continue;
+                case avsCommon::avs::attachment::AttachmentWriter::WriteStatus::OK_BUFFER_FULL:
+                    ACSDK_ERROR(LX(__func__).d("unexpected return code", "OK_BUFFER_FULL"));
+                    return 0;
+            }
+            ACSDK_ERROR(LX(__func__).m("unexpected writeStatus"));
+            return 0;
+        }
     }
+    return totalBytesWritten;
 }
 
 size_t LibCurlHttpContentFetcher::noopCallback(char* data, size_t size, size_t nmemb, void* userData) {
@@ -90,11 +134,14 @@ size_t LibCurlHttpContentFetcher::noopCallback(char* data, size_t size, size_t n
 LibCurlHttpContentFetcher::LibCurlHttpContentFetcher(const std::string& url) :
         m_url{url},
         m_bodyCallbackBegan{false},
-        m_lastStatusCode{0} {
+        m_lastStatusCode{0},
+        m_done{false} {
     m_hasObjectBeenUsed.clear();
 }
 
-std::unique_ptr<avsCommon::utils::HTTPContent> LibCurlHttpContentFetcher::getContent(FetchOptions fetchOption) {
+std::unique_ptr<avsCommon::utils::HTTPContent> LibCurlHttpContentFetcher::getContent(
+    FetchOptions fetchOption,
+    std::shared_ptr<avsCommon::avs::attachment::AttachmentWriter> writer) {
     if (m_hasObjectBeenUsed.test_and_set()) {
         return nullptr;
     }
@@ -120,7 +167,12 @@ std::unique_ptr<avsCommon::utils::HTTPContent> LibCurlHttpContentFetcher::getCon
     }
     auto httpStatusCodeFuture = m_statusCodePromise.get_future();
     auto contentTypeFuture = m_contentTypePromise.get_future();
+
     std::shared_ptr<avsCommon::avs::attachment::InProcessAttachment> stream = nullptr;
+
+    // This flag will remain false if the caller of getContent() passed in their own writer.
+    bool writerWasCreatedLocally = false;
+
     switch (fetchOption) {
         case FetchOptions::CONTENT_TYPE:
             /*
@@ -159,9 +211,15 @@ std::unique_ptr<avsCommon::utils::HTTPContent> LibCurlHttpContentFetcher::getCon
             });
             break;
         case FetchOptions::ENTIRE_BODY:
-            // Using the url as the identifier for the attachment
-            stream = std::make_shared<avsCommon::avs::attachment::InProcessAttachment>(m_url);
-            m_streamWriter = stream->createWriter();
+            if (!writer) {
+                // Using the url as the identifier for the attachment
+                stream = std::make_shared<avsCommon::avs::attachment::InProcessAttachment>(m_url);
+                writer = stream->createWriter(sds::WriterPolicy::BLOCKING);
+                writerWasCreatedLocally = true;
+            }
+
+            m_streamWriter = writer;
+
             if (!m_streamWriter) {
                 ACSDK_ERROR(LX("getContentFailed").d("reason", "failedToCreateWriter"));
                 return nullptr;
@@ -174,7 +232,7 @@ std::unique_ptr<avsCommon::utils::HTTPContent> LibCurlHttpContentFetcher::getCon
                 ACSDK_ERROR(LX("getContentFailed").d("reason", "failedToSetCurlHeaderCallback"));
                 return nullptr;
             }
-            m_thread = std::thread([this]() {
+            m_thread = std::thread([this, writerWasCreatedLocally]() {
                 auto curlReturnValue = curl_easy_perform(m_curlWrapper.getCurlHandle());
                 if (curlReturnValue != CURLE_OK) {
                     ACSDK_ERROR(LX("curlEasyPerformFailed").d("error", curl_easy_strerror(curlReturnValue)));
@@ -184,10 +242,19 @@ std::unique_ptr<avsCommon::utils::HTTPContent> LibCurlHttpContentFetcher::getCon
                     m_contentTypePromise.set_value(m_lastContentType);
                 }
                 /*
-                 * Curl easy perform has finished and all data has been written. Closing writer so that readers know
-                 * when they have caught up and read everything.
+                 * If the writer was created locally, its job is done and can be safely closed.
                  */
-                m_streamWriter->close();
+                if (writerWasCreatedLocally) {
+                    m_streamWriter->close();
+                }
+
+                /*
+                 * Note: If the writer was not created locally, its owner must ensure that it closes when necessary.
+                 * In the case of a livestream, if the writer is not closed the LibCurlHttpContentFetcher
+                 * will continue to download data indefinitely.
+                 */
+
+                m_done = true;
             });
             break;
         default:

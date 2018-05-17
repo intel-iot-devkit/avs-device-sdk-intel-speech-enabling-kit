@@ -1,7 +1,5 @@
 /*
- * RendererObserverInterface.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_OBSERVER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_OBSERVER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDEREROBSERVERINTERFACE_H_
+#define ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDEREROBSERVERINTERFACE_H_
 
 #include <string>
 
@@ -40,6 +38,8 @@ public:
         STARTED,
         /// The renderer has stopped rendering due to being stopped via a direct api call.
         STOPPED,
+        /// The renderer has completed rendering, if the renderer was initiated with a finite loop count.
+        COMPLETED,
         /// The renderer has encountered an error.
         ERROR
     };
@@ -74,6 +74,8 @@ inline std::string RendererObserverInterface::stateToString(State state) {
             return "STARTED";
         case State::STOPPED:
             return "STOPPED";
+        case State::COMPLETED:
+            return "COMPLETED";
         case State::ERROR:
             return "ERROR";
     }
@@ -96,4 +98,4 @@ inline std::ostream& operator<<(std::ostream& stream, const RendererObserverInte
 }  // namespace capabilityAgents
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDERER_OBSERVER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_RENDERER_RENDEREROBSERVERINTERFACE_H_

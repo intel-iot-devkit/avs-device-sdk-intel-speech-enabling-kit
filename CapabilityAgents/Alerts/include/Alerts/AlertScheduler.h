@@ -1,7 +1,5 @@
 /*
- * AlertScheduler.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_ALERT_SCHEDULER_H_
-#define ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_ALERT_SCHEDULER_H_
+#ifndef ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_ALERTSCHEDULER_H_
+#define ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_ALERTSCHEDULER_H_
 
 #include "Alerts/Storage/AlertStorageInterface.h"
 #include "Alerts/AlertObserverInterface.h"
@@ -65,11 +63,10 @@ public:
      *
      * @note This function must be called before other use of an object this class.
      *
-     * @param storageFilePath The file we will expect to use for our database.
      * @param observer An observer which we will notify of all alert state changes.
      * @return Whether initialization was successful.
      */
-    bool initialize(const std::string& storageFilePath, std::shared_ptr<AlertObserverInterface> observer);
+    bool initialize(std::shared_ptr<AlertObserverInterface> observer);
 
     /**
      * Schedule an alert for rendering.
@@ -133,8 +130,10 @@ public:
 
     /**
      * Clear all data being managed.  This includes database storage.
+     *
+     * @param reason What triggered the data to be cleared.
      */
-    void clearData();
+    void clearData(Alert::StopReason reason = Alert::StopReason::SHUTDOWN);
 
     /**
      * Handle shutdown.
@@ -217,6 +216,9 @@ private:
      */
     void deactivateActiveAlertHelperLocked(Alert::StopReason reason);
 
+    /// This is used to safely access the time utilities.
+    avsCommon::utils::timing::TimeUtils m_timeUtils;
+
     /**
      * Our observer.  Once initialized, this is only accessed within executor functions, so does not need mutex
      * protection.
@@ -257,4 +259,4 @@ private:
 }  // namespace capabilityAgents
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_ALERT_SCHEDULER_H_
+#endif  // ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_ALERTSCHEDULER_H_

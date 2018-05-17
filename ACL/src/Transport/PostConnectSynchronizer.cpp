@@ -1,7 +1,5 @@
 /*
- * PostConnectSynchronizer.cpp
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -189,7 +187,7 @@ void PostConnectSynchronizer::onContextFailure(const ContextRequestError error) 
 }
 
 void PostConnectSynchronizer::onSendCompleted(MessageRequestObserverInterface::Status status) {
-    ACSDK_DEBUG(LX("onSendCompleted").d("status", avsCommon::avs::MessageRequest::statusToString(status)));
+    ACSDK_DEBUG(LX("onSendCompleted").d("status", status));
     if (status == MessageRequestObserverInterface::Status::SUCCESS ||
         status == MessageRequestObserverInterface::Status::SUCCESS_NO_CONTENT) {
         {
@@ -240,16 +238,18 @@ void PostConnectSynchronizer::notifyObservers() {
     }
 }
 
-void PostConnectSynchronizer::onServerSideDisconnect() {
+void PostConnectSynchronizer::onServerSideDisconnect(std::shared_ptr<TransportInterface> transport) {
     ACSDK_DEBUG(LX("onServerSideDisconnect()"));
     doShutdown();
 }
 
-void PostConnectSynchronizer::onConnected() {
+void PostConnectSynchronizer::onConnected(std::shared_ptr<TransportInterface> transport) {
     ACSDK_DEBUG(LX("onConnected()"));
 }
 
-void PostConnectSynchronizer::onDisconnected(ConnectionStatusObserverInterface::ChangedReason reason) {
+void PostConnectSynchronizer::onDisconnected(
+    std::shared_ptr<TransportInterface> transport,
+    ConnectionStatusObserverInterface::ChangedReason reason) {
     ACSDK_DEBUG(LX("onDisconnected()"));
     doShutdown();
 }

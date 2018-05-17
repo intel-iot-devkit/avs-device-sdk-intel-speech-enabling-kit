@@ -1,7 +1,5 @@
 /*
- * MediaPlayer.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,9 +13,10 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_MEDIA_PLAYER_H_
-#define ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_MEDIA_PLAYER_H_
+#ifndef ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_MEDIAPLAYER_H_
+#define ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_MEDIAPLAYER_H_
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -29,12 +28,14 @@
 
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/base/gstbasesink.h>
 
 #include <AVSCommon/SDKInterfaces/HTTPContentFetcherInterfaceFactoryInterface.h>
 #include <AVSCommon/SDKInterfaces/SpeakerInterface.h>
 #include <AVSCommon/Utils/MediaPlayer/MediaPlayerInterface.h>
 #include <AVSCommon/Utils/MediaPlayer/MediaPlayerObserverInterface.h>
 #include <AVSCommon/Utils/PlaylistParser/PlaylistParserInterface.h>
+#include <PlaylistParser/UrlContentToAttachmentConverter.h>
 
 #include "MediaPlayer/OffsetManager.h"
 #include "MediaPlayer/PipelineInterface.h"
@@ -49,9 +50,12 @@ typedef std::vector<avsCommon::utils::mediaPlayer::MediaPlayerObserverInterface:
  * Class that handles creation of audio pipeline and playing of audio data.
  */
 class MediaPlayer
-        : public avsCommon::utils::mediaPlayer::MediaPlayerInterface
+        : public avsCommon::utils::RequiresShutdown
+        , public avsCommon::utils::mediaPlayer::MediaPlayerInterface
         , public avsCommon::sdkInterfaces::SpeakerInterface
-        , private PipelineInterface {
+        , private PipelineInterface
+        , public playlistParser::UrlContentToAttachmentConverter::ErrorObserverInterface
+        , public std::enable_shared_from_this<MediaPlayer> {
 public:
     /**
      * Creates an instance of the @c MediaPlayer.
@@ -64,7 +68,8 @@ public:
         std::shared_ptr<avsCommon::sdkInterfaces::HTTPContentFetcherInterfaceFactoryInterface> contentFetcherFactory =
             nullptr,
         avsCommon::sdkInterfaces::SpeakerInterface::Type type =
-            avsCommon::sdkInterfaces::SpeakerInterface::Type::AVS_SYNCED);
+            avsCommon::sdkInterfaces::SpeakerInterface::Type::AVS_SYNCED,
+        std::string name = "");
 
     /**
      * Destructor.
@@ -73,9 +78,12 @@ public:
 
     /// @name Overridden MediaPlayerInterface methods.
     /// @{
-    SourceId setSource(std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader) override;
+    SourceId setSource(
+        std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader,
+        const avsCommon::utils::AudioFormat* format = nullptr) override;
     SourceId setSource(std::shared_ptr<std::istream> stream, bool repeat) override;
-    SourceId setSource(const std::string& url) override;
+    SourceId setSource(const std::string& url, std::chrono::milliseconds offset = std::chrono::milliseconds::zero())
+        override;
 
     bool play(SourceId id) override;
     bool stop(SourceId id) override;
@@ -85,8 +93,8 @@ public:
      * will reset the pipeline and source, and will not resume playback.
      */
     bool resume(SourceId id) override;
+    uint64_t getNumBytesBuffered() override;
     std::chrono::milliseconds getOffset(SourceId id) override;
-    bool setOffset(SourceId id, std::chrono::milliseconds offset) override;
     void setObserver(std::shared_ptr<avsCommon::utils::mediaPlayer::MediaPlayerObserverInterface> observer) override;
     /// @}
 
@@ -109,18 +117,30 @@ public:
     guint queueCallback(const std::function<gboolean()>* callback) override;
     /// @}
 
+    /// @name Overriden UrlContentToAttachmentConverter::ErrorObserverInterface methods.
+    /// @{
+    void onError() override;
+    /// @}
+
+    void doShutdown() override;
+
 private:
     /**
      * The @c AudioPipeline consists of the following elements:
      * @li @c appsrc The appsrc element is used as the source to which audio data is provided.
      * @li @c decoder Decodebin is used as the decoder element to decode audio.
+     * @li @c decodedQueue A queue is used to store the decoded data.
      * @li @c converter An audio-converter is used to convert between audio formats.
      * @li @c volume The volume element is used as a volume control.
+     * @li @c resampler The optional resampler element is used to convert to a specified format
+     * @li @c caps The optional caps element is used to specify the resampler format
      * @li @c audioSink Sink for the audio.
      * @li @c pipeline The pipeline is a bin consisting of the @c appsrc, the @c decoder, the @c converter, and the
      * @c audioSink.
      *
-     * The data flow through the elements is appsrc -> decoder -> converter -> volume -> audioSink.
+     * The data flow through the elements is appsrc -> decoder -> decodedQueue -> converter -> volume -> audioSink.
+     * Ideally we would want to use playsink or playbin directly to automate as much as possible. However, this
+     * causes problems with multiple pipelines and volume settings in pulse audio. Pending further investigation.
      */
     struct AudioPipeline {
         /// The source element.
@@ -129,11 +149,20 @@ private:
         /// The decoder element.
         GstElement* decoder;
 
+        /// A queue for decoded elements.
+        GstElement* decodedQueue;
+
         /// The converter element.
         GstElement* converter;
 
         /// The volume element.
         GstElement* volume;
+
+        /// The resampler element.
+        GstElement* resample;
+
+        /// The capabilities element.
+        GstElement* caps;
 
         /// The sink element.
         GstElement* audioSink;
@@ -145,6 +174,7 @@ private:
         AudioPipeline() :
                 appsrc{nullptr},
                 decoder{nullptr},
+                decodedQueue{nullptr},
                 converter{nullptr},
                 volume{nullptr},
                 audioSink{nullptr},
@@ -159,7 +189,8 @@ private:
      */
     MediaPlayer(
         std::shared_ptr<avsCommon::sdkInterfaces::HTTPContentFetcherInterfaceFactoryInterface> contentFetcherFactory,
-        avsCommon::sdkInterfaces::SpeakerInterface::Type type);
+        avsCommon::sdkInterfaces::SpeakerInterface::Type type,
+        std::string name);
 
     /**
      * Initializes GStreamer and starts a main event loop on a new thread.
@@ -264,18 +295,21 @@ private:
      *
      * @param reader The @c AttachmentReader with which to receive the audio to play.
      * @param promise A promise to fulfill with a @c SourceId value once the source has been set.
+     * @param audioFormat The audioFormat to be used to interpret raw audio data.
      */
     void handleSetAttachmentReaderSource(
         std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> reader,
-        std::promise<SourceId>* promise);
+        std::promise<SourceId>* promise,
+        const avsCommon::utils::AudioFormat* audioFormat = nullptr);
 
     /**
      * Worker thread handler for setting the source of audio to play.
      *
      * @param url The url to set as the source.
+     * @param offset The offset from which to start streaming from.
      * @param promise A promise to fulfill with a @c SourceId value once the source has been set.
      */
-    void handleSetSource(std::string url, std::promise<SourceId>* promise);
+    void handleSetUrlSource(const std::string& url, std::chrono::milliseconds offset, std::promise<SourceId>* promise);
 
     /**
      * Worker thread handler for setting the source of audio to play.
@@ -285,6 +319,13 @@ private:
      * @param promise A promise to fulfill with a @ SourceId value once the source has been set.
      */
     void handleSetIStreamSource(std::shared_ptr<std::istream> stream, bool repeat, std::promise<SourceId>* promise);
+
+    /**
+     * Internal method to update the volume according to a gstreamer bug fix
+     * https://bugzilla.gnome.org/show_bug.cgi?id=793081
+     * @param gstVolume a volume to be set to GStreamer
+     */
+    void handleSetVolumeInternal(gdouble gstVolume);
 
     /**
      * Worker thread handler for setting the volume.
@@ -365,15 +406,6 @@ private:
     void handleGetOffset(SourceId id, std::promise<std::chrono::milliseconds>* promise);
 
     /**
-     * Worker thread handler for setting the playback position.
-     *
-     * @param id The @c SourceId that the caller is expecting to be handled.
-     * @param promise A promise to fulfill with a @c bool value once the offset has been set.
-     * @param offset The offset to start playing from.
-     */
-    void handleSetOffset(SourceId id, std::promise<bool>* promise, std::chrono::milliseconds offset);
-
-    /**
      * Worker thread handler for setting the observer.
      *
      * @param promise A void promise to fulfill once the observer has been set.
@@ -437,21 +469,46 @@ private:
     bool queryIsSeekable(bool* isSeekable);
 
     /**
-     * Used to obtain the current buffering status of the pipeline.
-     *
-     * @param[out] buffering Whether the pipeline is currently buffering.
-     * @return A boolean indicating whether the operation was successful.
-     */
-    bool queryBufferingStatus(bool* buffering);
-
-    /**
      * Performs a seek to the @c seekPoint.
      *
      * @return A boolean indicating whether the seek operation was successful.
      */
     bool seek();
 
+    /**
+     * Validates that the given id matches the current source id being operated on.
+     *
+     * @param id The id to validate
+     * @return @c true if the id matches the source being operated on and @c false otherwise.
+     */
     bool validateSourceAndId(SourceId id);
+
+    /**
+     * The callback to be added to the event loop to process upon onError() callback.
+     *
+     * @param pointer The instance to this @c MediaPlayer.
+     * @return @c false if there is no error with this callback, else @c true.
+     */
+    static gboolean onErrorCallback(gpointer pointer);
+
+    /**
+     * Save offset of stream before we teardown the pipeline.
+     */
+    void saveOffsetBeforeTeardown();
+
+    /**
+     * Destructs the @c m_source with proper steps.
+     */
+    void cleanUpSource();
+
+    /// The volume to restore to when exiting muted state. Used in GStreamer crash fix for zero volume on PCM data.
+    gdouble m_lastVolume;
+
+    /// The muted state of the player. Used in GStreamer crash fix for zero volume on PCM data.
+    bool m_isMuted;
+
+    /// Used to stream urls into attachments
+    std::shared_ptr<playlistParser::UrlContentToAttachmentConverter> m_urlConverter;
 
     /// An instance of the @c OffsetManager.
     OffsetManager m_offsetManager;
@@ -470,9 +527,6 @@ private:
 
     // Main loop thread
     std::thread m_mainLoopThread;
-
-    // Set Source thread.
-    std::thread m_setSourceThread;
 
     /// Bus Id to track the bus.
     guint m_busWatchId;
@@ -509,9 +563,12 @@ private:
 
     /// Flag to indicate whether a pause should happen immediately.
     bool m_pauseImmediately;
+
+    /// Stream offset before we teardown the pipeline
+    std::chrono::milliseconds m_offsetBeforeTeardown;
 };
 
 }  // namespace mediaPlayer
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_MEDIA_PLAYER_INCLUDE_MEDIA_PLAYER_MEDIA_PLAYER_H_
+#endif  // ALEXA_CLIENT_SDK_MEDIAPLAYER_INCLUDE_MEDIAPLAYER_MEDIAPLAYER_H_

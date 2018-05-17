@@ -1,7 +1,5 @@
 /*
- * SQLiteStatement.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_STORAGE_SQLITE_STORAGE_INCLUDE_SQLITE_STORAGE_SQLITE_STATEMENT_H_
-#define ALEXA_CLIENT_SDK_STORAGE_SQLITE_STORAGE_INCLUDE_SQLITE_STORAGE_SQLITE_STATEMENT_H_
+#ifndef ALEXA_CLIENT_SDK_STORAGE_SQLITESTORAGE_INCLUDE_SQLITESTORAGE_SQLITESTATEMENT_H_
+#define ALEXA_CLIENT_SDK_STORAGE_SQLITESTORAGE_INCLUDE_SQLITESTORAGE_SQLITESTATEMENT_H_
 
 #include <sqlite3.h>
 #include <string>
@@ -101,13 +99,6 @@ public:
      * @return Whether the bind was successful.
      */
     bool bindStringParameter(int index, const std::string& value);
-
-    /**
-     * Returns the managed statement handle.
-     *
-     * @return The managed statement handle.
-     */
-    sqlite3_stmt* getHandle();
 
     /**
      * Returns the SQLite result for the last step operation performed.
@@ -199,4 +190,4 @@ private:
 }  // namespace storage
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_STORAGE_SQLITE_STORAGE_INCLUDE_SQLITE_STORAGE_SQLITE_STATEMENT_H_
+#endif  // ALEXA_CLIENT_SDK_STORAGE_SQLITESTORAGE_INCLUDE_SQLITESTORAGE_SQLITESTATEMENT_H_

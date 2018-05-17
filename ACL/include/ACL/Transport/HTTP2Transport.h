@@ -1,7 +1,5 @@
 /*
- * HTTP2Transport.h
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2_TRANSPORT_H_
-#define ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2_TRANSPORT_H_
+#ifndef ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2TRANSPORT_H_
+#define ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2TRANSPORT_H_
 
 #include <atomic>
 #include <condition_variable>
@@ -363,6 +361,9 @@ private:
     /// Whether or not the @c networkLoop is stopping. Serialized by @c m_mutex.
     bool m_isStopping;
 
+    /// Whether or not the onDisconnected() notification has been sent. Serialized by @c m_mutex.
+    bool m_disconnectedSent;
+
     /// Queue of @c MessageRequest instances to send. Serialized by @c m_mutex.
     std::deque<std::shared_ptr<avsCommon::avs::MessageRequest>> m_requestQueue;
 
@@ -376,4 +377,4 @@ private:
 }  // namespace acl
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2_TRANSPORT_H_
+#endif  // ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2TRANSPORT_H_

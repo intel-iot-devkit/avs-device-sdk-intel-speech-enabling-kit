@@ -1,7 +1,5 @@
 /*
- * BlockingPolicy.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_BLOCKING_POLICY_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_BLOCKING_POLICY_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_BLOCKINGPOLICY_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_BLOCKINGPOLICY_H_
 
 #include <iostream>
 
@@ -39,6 +37,12 @@ enum class BlockingPolicy {
     BLOCKING,
 
     /**
+     * Handling of an @c AVSDirective with this @c BlockingPolicy is done immediately and does NOT block the handling of
+     * subsequent @c AVSDirectives.
+     */
+    HANDLE_IMMEDIATELY,
+
+    /**
      * BlockingPolicy not specified.
      */
     NONE
@@ -59,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& stream, BlockingPolicy policy) {
         case BlockingPolicy::BLOCKING:
             stream << "BLOCKING";
             break;
+        case BlockingPolicy::HANDLE_IMMEDIATELY:
+            stream << "HANDLE_IMMEDIATELY";
+            break;
         case BlockingPolicy::NONE:
             stream << "NONE";
             break;
@@ -70,4 +77,4 @@ inline std::ostream& operator<<(std::ostream& stream, BlockingPolicy policy) {
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_AVS_INCLUDE_AVS_COMMON_AVS_BLOCKING_POLICY_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_AVS_INCLUDE_AVSCOMMON_AVS_BLOCKINGPOLICY_H_

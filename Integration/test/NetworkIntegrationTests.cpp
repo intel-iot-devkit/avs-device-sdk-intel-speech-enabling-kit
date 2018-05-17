@@ -1,7 +1,5 @@
 /*
- * NetworkIntegrationTests.cpp
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -259,7 +257,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     if (argc < 3) {
-        std::cerr << "USAGE: NetworkIntegrationTests <path_to_auth_delgate_config> <Network_Interface_Name>"
+        std::cerr << "USAGE: " << std::string(argv[0]) << "<path_to_AlexaClientSDKConfig.json> <Network_Interface_Name>"
                   << std::endl;
         return 1;
     } else {

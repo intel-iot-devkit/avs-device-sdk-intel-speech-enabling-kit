@@ -1,19 +1,16 @@
 /*
- * Alert.cpp
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Copyright 2017 Amazon.com, Inc. or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *     http://aws.amazon.com/apache2.0/
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 
 #include "Alerts/Alert.h"
@@ -60,7 +57,7 @@ static const std::string KEY_LOOP_COUNT = "loopCount";
 /// String for lookup of the loop pause in milliseconds value in a parsed JSON document.
 static const std::string KEY_LOOP_PAUSE_IN_MILLISECONDS = "loopPauseInMilliSeconds";
 /// String for lookup of the backgroundAssetId for an alert, if assets are provided.
-static const std::string KEY_BACKGROUND_ASSET_ID = "backgroundAsset";
+static const std::string KEY_BACKGROUND_ASSET_ID = "backgroundAlertAsset";
 
 /// We won't allow an alert to render more than 1 hour.
 const std::chrono::seconds MAXIMUM_ALERT_RENDERING_TIME = std::chrono::hours(1);
@@ -75,14 +72,18 @@ static const std::string TAG("Alert");
  */
 #define LX(event) alexaClientSDK::avsCommon::utils::logger::LogEntry(TAG, event)
 
-Alert::Alert() :
+Alert::Alert(
+    std::function<std::unique_ptr<std::istream>()> defaultAudioFactory,
+    std::function<std::unique_ptr<std::istream>()> shortAudioFactory) :
         m_dbId{0},
         m_state{State::SET},
         m_rendererState{RendererObserverInterface::State::UNSET},
         m_stopReason{StopReason::UNSET},
         m_focusState{avsCommon::avs::FocusState::NONE},
         m_hasTimerExpired{false},
-        m_observer{nullptr} {
+        m_observer{nullptr},
+        m_defaultAudioFactory{defaultAudioFactory},
+        m_shortAudioFactory{shortAudioFactory} {
 }
 
 /**
@@ -326,7 +327,8 @@ void Alert::onRendererStateChange(RendererObserverInterface::State state, const 
                      .d("m_hasTimerExpired", m_hasTimerExpired)
                      .d("m_state", m_state));
     bool shouldNotifyObserver = false;
-    AlertObserverInterface::State notifyState;
+    bool shouldRetryRendering = false;
+    AlertObserverInterface::State notifyState = AlertObserverInterface::State::ERROR;
     std::string notifyReason;
 
     std::unique_lock<std::mutex> lock(m_mutex);
@@ -366,10 +368,26 @@ void Alert::onRendererStateChange(RendererObserverInterface::State state, const 
             }
             break;
 
-        case RendererObserverInterface::State::ERROR:
+        case RendererObserverInterface::State::COMPLETED:
+            m_state = State::COMPLETED;
             shouldNotifyObserver = true;
-            notifyState = AlertObserverInterface::State::ERROR;
-            notifyReason = reason;
+            notifyState = AlertObserverInterface::State::COMPLETED;
+            break;
+
+        case RendererObserverInterface::State::ERROR:
+            // If the renderer failed while handling a url, let's presume there are network issues and render
+            // the on-device background audio sound instead.
+            if (!m_assetConfiguration.assetPlayOrderItems.empty() && !m_assetConfiguration.hasRenderingFailed) {
+                ACSDK_ERROR(LX("onRendererStateChangeFailed")
+                                .d("reason", reason)
+                                .m("Renderer failed to handle a url. Retrying with local background audio sound."));
+                m_assetConfiguration.hasRenderingFailed = true;
+                shouldRetryRendering = true;
+            } else {
+                shouldNotifyObserver = true;
+                notifyState = AlertObserverInterface::State::ERROR;
+                notifyReason = reason;
+            }
             break;
     }
 
@@ -377,6 +395,10 @@ void Alert::onRendererStateChange(RendererObserverInterface::State state, const 
 
     if (shouldNotifyObserver && observerCopy) {
         observerCopy->onAlertStateChange(m_token, notifyState, notifyReason);
+    }
+
+    if (shouldRetryRendering) {
+        startRenderer();
     }
 }
 
@@ -476,13 +498,16 @@ void Alert::startRenderer() {
     auto loopCount = m_assetConfiguration.loopCount;
     auto loopPause = m_assetConfiguration.loopPause;
 
-    std::string fileName = getDefaultAudioFilePath();
+    // If there are no assets to play (due to the alert not providing any assets), or there was a previous error
+    // (indicated by m_assetConfiguration.hasRenderingFailed), we call rendererCopy->start(..) with an empty vector of
+    // urls.  This causes the default audio to be rendered.
+    auto audioFactory = getDefaultAudioFactory();
     if (avsCommon::avs::FocusState::BACKGROUND == m_focusState) {
-        fileName = getDefaultShortAudioFilePath();
-        if (!m_assetConfiguration.backgroundAssetId.empty()) {
+        audioFactory = getShortAudioFactory();
+        if (!m_assetConfiguration.backgroundAssetId.empty() && !m_assetConfiguration.hasRenderingFailed) {
             urls.push_back(m_assetConfiguration.assets[m_assetConfiguration.backgroundAssetId].url);
         }
-    } else if (!m_assetConfiguration.assets.empty()) {
+    } else if (!m_assetConfiguration.assets.empty() && !m_assetConfiguration.hasRenderingFailed) {
         // Only play the named timer urls when it's in foreground.
         for (auto item : m_assetConfiguration.assetPlayOrderItems) {
             urls.push_back(m_assetConfiguration.assets[item].url);
@@ -492,7 +517,7 @@ void Alert::startRenderer() {
     lock.unlock();
 
     rendererCopy->setObserver(shared_from_this());
-    rendererCopy->start(fileName, urls, loopCount, loopPause);
+    rendererCopy->start(audioFactory, urls, loopCount, loopPause);
 }
 
 void Alert::onMaxTimerExpiration() {
@@ -513,6 +538,14 @@ bool Alert::isPastDue(int64_t currentUnixTime, std::chrono::seconds timeLimit) {
     int64_t cutoffTime = currentUnixTime - timeLimit.count();
 
     return (m_timePoint.getTime_Unix() < cutoffTime);
+}
+
+std::function<std::unique_ptr<std::istream>()> Alert::getDefaultAudioFactory() const {
+    return m_defaultAudioFactory;
+}
+
+std::function<std::unique_ptr<std::istream>()> Alert::getShortAudioFactory() const {
+    return m_shortAudioFactory;
 }
 
 Alert::ContextInfo Alert::getContextInfo() const {
@@ -560,6 +593,8 @@ std::string Alert::stopReasonToString(Alert::StopReason stopReason) {
             return "LOCAL_STOP";
         case Alert::StopReason::SHUTDOWN:
             return "SHUTDOWN";
+        case Alert::StopReason::LOG_OUT:
+            return "LOG_OUT";
     }
 
     ACSDK_ERROR(LX("stopReasonToStringFailed").d("unhandledCase", stopReason));

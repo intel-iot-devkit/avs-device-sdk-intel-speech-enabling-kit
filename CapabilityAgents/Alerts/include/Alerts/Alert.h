@@ -1,7 +1,5 @@
 /*
- * Alert.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_ALERT_H_
-#define ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_ALERT_H_
+#ifndef ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_ALERT_H_
+#define ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_ALERT_H_
 
 #include "Alerts/AlertObserverInterface.h"
 #include "Alerts/Renderer/Renderer.h"
@@ -93,7 +91,9 @@ public:
         /// The alert has been stopped due to a local user action.
         LOCAL_STOP,
         /// The alert is being stopped due to an SDK shutdown operation.
-        SHUTDOWN
+        SHUTDOWN,
+        /// Logout customer logged out or deregistered.
+        LOG_OUT
     };
 
     /**
@@ -127,7 +127,7 @@ public:
         /**
          * Constructor.
          */
-        AssetConfiguration() : loopCount{0}, loopPause{std::chrono::milliseconds{0}} {
+        AssetConfiguration() : loopCount{0}, loopPause{std::chrono::milliseconds{0}}, hasRenderingFailed{false} {
         }
 
         /// A map of the custom assets, mapping from asset.id to the asset itself.
@@ -143,6 +143,8 @@ public:
         int loopCount;
         /// The pause time, in milliseconds, that should be taken between each loop of asset rendering.
         std::chrono::milliseconds loopPause;
+        /// A flag to capture if rendering any of these urls failed.
+        bool hasRenderingFailed;
     };
 
     /**
@@ -209,7 +211,9 @@ public:
     /**
      * Constructor.
      */
-    Alert();
+    Alert(
+        std::function<std::unique_ptr<std::istream>()> defaultAudioFactory,
+        std::function<std::unique_ptr<std::istream>()> shortAudioFactory);
 
     /**
      * Returns a string to identify the type of the class.  Required for persistent storage.
@@ -219,18 +223,18 @@ public:
     virtual std::string getTypeName() const = 0;
 
     /**
-     * Returns the file path for the alert's default audio file.
+     * A function that gets a factory to create a stream to the default audio for an alert.
      *
-     * @return The file path for the alert's default audio file.
+     * @return A factory function that generates a default audio stream.
      */
-    virtual std::string getDefaultAudioFilePath() const = 0;
+    std::function<std::unique_ptr<std::istream>()> getDefaultAudioFactory() const;
 
     /**
-     * Returns the file path for the alert's short (backgrounded) audio file.
+     * A function that gets a factory to create a stream to the short audio for an alert.
      *
-     * @return The file path for the alert's short (backgrounded) audio file.
+     * @return A factory function that generates a short audio stream.
      */
-    virtual std::string getDefaultShortAudioFilePath() const = 0;
+    std::function<std::unique_ptr<std::istream>()> getShortAudioFactory() const;
 
     /**
      * Returns the Context data which may be shared with AVS.
@@ -460,6 +464,10 @@ private:
     AlertObserverInterface* m_observer;
     /// The renderer for the alert.
     std::shared_ptr<renderer::RendererInterface> m_renderer;
+    /// This is the factory that provides a default audio stream.
+    const std::function<std::unique_ptr<std::istream>()> m_defaultAudioFactory;
+    /// This is the factory that provides a short audio stream.
+    const std::function<std::unique_ptr<std::istream>()> m_shortAudioFactory;
 };
 
 /**
@@ -515,4 +523,4 @@ inline std::ostream& operator<<(std::ostream& stream, const Alert::ParseFromJson
 }  // namespace capabilityAgents
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_ALERTS_INCLUDE_ALERTS_ALERT_H_
+#endif  // ALEXA_CLIENT_SDK_CAPABILITYAGENTS_ALERTS_INCLUDE_ALERTS_ALERT_H_

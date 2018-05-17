@@ -1,7 +1,5 @@
 /*
- * HTTP2Transport.cpp
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -19,6 +17,8 @@
 #include <functional>
 #include <random>
 
+#include <AVSCommon/Utils/Configuration/ConfigurationNode.h>
+#include <AVSCommon/Utils/LibcurlUtils/HttpResponseCodes.h>
 #include <AVSCommon/Utils/Logger/Logger.h>
 #include <AVSCommon/Utils/Timing/TimeUtils.h>
 
@@ -29,6 +29,7 @@ namespace alexaClientSDK {
 namespace acl {
 
 using namespace alexaClientSDK::avsCommon::utils;
+using namespace alexaClientSDK::avsCommon::utils::libcurlUtils;
 using namespace avsCommon::sdkInterfaces;
 using namespace avsCommon::avs;
 using namespace avsCommon::avs::attachment;
@@ -48,6 +49,8 @@ static const std::string TAG("HTTP2Transport");
  * https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/docs/managing-an-http-2-connection
  */
 const static int MAX_STREAMS = 10;
+/// Default @c AVS endpoint to connect to.
+const static std::string DEFAULT_AVS_ENDPOINT = "https://avs-alexa-na.amazon.com";
 /// Downchannel URL
 const static std::string AVS_DOWNCHANNEL_URL_PATH_EXTENSION = "/v20160207/directives";
 /// URL to send events to
@@ -66,6 +69,10 @@ const static long PING_RESPONSE_TIMEOUT_SEC = 30;
 static const std::chrono::seconds ESTABLISH_CONNECTION_TIMEOUT = std::chrono::seconds(60);
 /// Timeout for transmission of data on a given stream
 static const std::chrono::seconds STREAM_PROGRESS_TIMEOUT = std::chrono::seconds(30);
+/// Key for the root node value containing configuration values for ACL.
+static const std::string ACL_CONFIG_KEY = "acl";
+/// Key for the 'endpoint' value under the @c ACL_CONFIG_KEY configuration node.
+static const std::string ENDPOINT_KEY = "endpoint";
 
 #ifdef ACSDK_OPENSSL_MIN_VER_REQUIRED
 /**
@@ -169,10 +176,16 @@ HTTP2Transport::HTTP2Transport(
         m_isNetworkThreadRunning{false},
         m_isConnected{false},
         m_isStopping{false},
+        m_disconnectedSent{false},
         m_postConnectObject{postConnectObject} {
     m_observers.insert(observer);
 
     printCurlDiagnostics();
+
+    if (m_avsEndpoint.empty()) {
+        alexaClientSDK::avsCommon::utils::configuration::ConfigurationNode::getRoot()[ACL_CONFIG_KEY].getString(
+            ENDPOINT_KEY, &m_avsEndpoint, DEFAULT_AVS_ENDPOINT);
+    }
 }
 
 void HTTP2Transport::doShutdown() {
@@ -296,6 +309,8 @@ bool HTTP2Transport::setupDownchannelStream(ConnectionStatusObserverInterface::C
     }
 
     std::string url = m_avsEndpoint + AVS_DOWNCHANNEL_URL_PATH_EXTENSION;
+    ACSDK_DEBUG9(LX("setupDownchannelStream").d("url", url));
+
     m_downchannelStream = m_streamPool.createGetStream(url, authToken, m_messageConsumer);
     if (!m_downchannelStream) {
         ACSDK_ERROR(LX("setupDownchannelStreamFailed").d("reason", "createGetStreamFailed"));
@@ -486,7 +501,7 @@ bool HTTP2Transport::establishConnection() {
              * Only break the loop if we are successful. If we aren't keep looping so that we download
              * the full error message (for logging purposes) and then return false when we're done
              */
-            if (HTTP2Stream::HTTPResponseCodes::SUCCESS_OK == downchannelResponseCode) {
+            if (HTTPResponseCode::SUCCESS_OK == downchannelResponseCode) {
                 return true;
             }
         } else if (downchannelResponseCode < 0) {
@@ -649,7 +664,7 @@ bool HTTP2Transport::sendPing() {
 
 void HTTP2Transport::handlePingResponse() {
     ACSDK_DEBUG(LX("handlePingResponse"));
-    if (HTTP2Stream::HTTPResponseCodes::SUCCESS_NO_CONTENT != m_pingStream->getResponseCode()) {
+    if (HTTPResponseCode::SUCCESS_NO_CONTENT != m_pingStream->getResponseCode()) {
         ACSDK_ERROR(LX("pingFailed").d("responseCode", m_pingStream->getResponseCode()));
         setIsStopping(ConnectionStatusObserverInterface::ChangedReason::SERVER_SIDE_DISCONNECT);
     }
@@ -700,9 +715,10 @@ void HTTP2Transport::setIsConnectedFalse() {
     auto disconnectReason = ConnectionStatusObserverInterface::ChangedReason::INTERNAL_ERROR;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (!m_isConnected) {
+        if (m_disconnectedSent) {
             return;
         }
+        m_disconnectedSent = true;
         m_isConnected = false;
         disconnectReason = m_disconnectReason;
     }
@@ -775,7 +791,7 @@ void HTTP2Transport::notifyObserversOnServerSideDisconnect() {
     lock.unlock();
 
     for (auto observer : observers) {
-        observer->onServerSideDisconnect();
+        observer->onServerSideDisconnect(shared_from_this());
     }
 }
 
@@ -785,7 +801,7 @@ void HTTP2Transport::notifyObserversOnDisconnect(ConnectionStatusObserverInterfa
     lock.unlock();
 
     for (auto observer : observers) {
-        observer->onDisconnected(reason);
+        observer->onDisconnected(shared_from_this(), reason);
     }
 }
 
@@ -795,7 +811,7 @@ void HTTP2Transport::notifyObserversOnConnected() {
     lock.unlock();
 
     for (auto observer : observers) {
-        observer->onConnected();
+        observer->onConnected(shared_from_this());
     }
 }
 

@@ -1,7 +1,5 @@
 /*
- * UIManager.cpp
- *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,10 +14,14 @@
  */
 
 #include <sstream>
+#include <iostream>
+#include <fstream>
+#include <unistd.h>
 
 #include "SampleApp/UIManager.h"
 
 #include <AVSCommon/SDKInterfaces/DialogUXStateObserverInterface.h>
+#include "AVSCommon/Utils/SDKVersion.h"
 
 #include "SampleApp/ConsolePrinter.h"
 
@@ -28,6 +30,11 @@ namespace sampleApp {
 
 using namespace avsCommon::sdkInterfaces;
 
+static const std::string VERSION = avsCommon::utils::sdkVersion::getCurrentVersion();
+static const char* LED_CTRL_STATE = "/sys/kernel/avsux/state";
+static const char* LED_CTRL_VOLUME = "/sys/kernel/avsux/volume";
+
+// clang-format off
 static const std::string ALEXA_WELCOME_MESSAGE =
     "                  #    #     #  #####      #####  ######  #    #              \n"
     "                 # #   #     # #     #    #     # #     # #   #               \n"
@@ -43,8 +50,9 @@ static const std::string ALEXA_WELCOME_MESSAGE =
     "       #####  #    # # ## # #    # #      #####     #     # #    # #    #     \n"
     "            # ###### #    # #####  #      #         ####### #####  #####      \n"
     "      #     # #    # #    # #      #      #         #     # #      #          \n"
-    "       #####  #    # #    # #      ###### ######    #     # #      #          \n";
-
+    "       #####  #    # #    # #      ###### ######    #     # #      #          \n\n"
+    "       SDK Version " + VERSION + "\n";
+// clang-format on
 static const std::string HELP_MESSAGE =
     "+----------------------------------------------------------------------------+\n"
     "|                                  Options:                                  |\n"
@@ -63,6 +71,8 @@ static const std::string HELP_MESSAGE =
 #ifdef KWD
     "| Privacy mode (microphone off):                                             |\n"
     "|       Press 'm' and Enter to turn on and off the microphone.               |\n"
+    "| Echo Spatial Perception (ESP): This is for testing purpose only!           |\n"
+    "|       Press 'e' followed by Enter at any time to adjust ESP settings.      |\n"
 #endif
     "| Playback Controls:                                                         |\n"
     "|       Press '1' for a 'PLAY' button press.                                 |\n"
@@ -73,8 +83,16 @@ static const std::string HELP_MESSAGE =
     "|       Press 'c' followed by Enter at any time to see the settings screen.  |\n"
     "| Speaker Control:                                                           |\n"
     "|       Press 'p' followed by Enter at any time to adjust speaker settings.  |\n"
+    "| Firmware Version:                                                          |\n"
+    "|       Press 'f' followed by Enter at any time to report a different        |\n"
+    "|       firmware version.                                                    |\n"
     "| Info:                                                                      |\n"
     "|       Press 'i' followed by Enter at any time to see the help screen.      |\n"
+    "| Reset device:                                                              |\n"
+    "|       Press 'k' followed by Enter at any time to reset your device. This   |\n"
+    "|       will erase any data stored in the device and you will have to        |\n"
+    "|       register your device with another account.                           |\n"
+    "|       This will kill the application since we don't support login yet.     |\n"
     "| Quit:                                                                      |\n"
     "|       Press 'q' followed by Enter at any time to quit the application.     |\n"
     "+----------------------------------------------------------------------------+\n";
@@ -93,6 +111,10 @@ static const std::string LOCALE_MESSAGE =
     "| Press '1' followed by Enter to change the language to US English.          |\n"
     "| Press '2' followed by Enter to change the language to UK English.          |\n"
     "| Press '3' followed by Enter to change the language to German.              |\n"
+    "| Press '4' followed by Enter to change the language to Indian English.      |\n"
+    "| Press '5' followed by Enter to change the language to Canadian English.    |\n"
+    "| Press '6' followed by Enter to change the language to Japanese.            |\n"
+    "| Press '7' followed by Enter to change the language to Australian English.  |\n"
     "+----------------------------------------------------------------------------+\n";
 
 static const std::string SPEAKER_CONTROL_MESSAGE =
@@ -103,6 +125,13 @@ static const std::string SPEAKER_CONTROL_MESSAGE =
     "|       AVS_SYNCED Speakers Control Volume For: Speech, Content.             |\n"
     "| Press '2' followed by Enter to modify LOCAL typed speakers.                |\n"
     "|       LOCAL Speakers Control Volume For: Alerts.                           |\n"
+    "+----------------------------------------------------------------------------+\n";
+
+static const std::string FIRMWARE_CONTROL_MESSAGE =
+    "+----------------------------------------------------------------------------+\n"
+    "|                          Firmware Version:                                 |\n"
+    "|                                                                            |\n"
+    "| Enter a decimal integer value between 1 and 2147483647.                    |\n"
     "+----------------------------------------------------------------------------+\n";
 
 static const std::string VOLUME_CONTROL_MESSAGE =
@@ -117,12 +146,40 @@ static const std::string VOLUME_CONTROL_MESSAGE =
     "| Press 'q' to exit Volume Control Mode.                                     |\n"
     "+----------------------------------------------------------------------------+\n";
 
+static const std::string ESP_CONTROL_MESSAGE =
+    "+----------------------------------------------------------------------------+\n"
+    "|                          ESP Options:                                      |\n"
+    "|                                                                            |\n"
+    "| By Default ESP support is off and the implementation in the SampleApp is   |\n"
+    "| for testing purpose only!                                                  |\n"
+    "|                                                                            |\n"
+    "| Press '1' followed by Enter to toggle ESP support.                         |\n"
+    "| Press '2' followed by Enter to enter the voice energy.                     |\n"
+    "| Press '3' followed by Enter to enter the ambient energy.                   |\n"
+    "| Press 'q' to exit ESP Control Mode.                                        |\n";
+
+static const std::string RESET_CONFIRMATION =
+    "+----------------------------------------------------------------------------+\n"
+    "|                    Device Reset Confirmation:                              |\n"
+    "|                                                                            |\n"
+    "| This operation will remove all your personal information, device settings, |\n"
+    "| and downloaded content. Are you sure you want to reset your device?        |\n"
+    "|                                                                            |\n"
+    "| Press 'Y' followed by Enter to reset the device.                           |\n"
+    "| Press 'N' followed by Enter to cancel the device reset operation.          |\n"
+    "+----------------------------------------------------------------------------+\n";
+
+static const std::string RESET_WARNING =
+    "Device was reset! Please don't forget to deregister it. For more details "
+    "visit https://www.amazon.com/gp/help/customer/display.html?nodeId=201357520";
+
 void UIManager::onDialogUXStateChanged(DialogUXState state) {
     m_executor.submit([this, state]() {
         if (state == m_dialogState) {
             return;
         }
         m_dialogState = state;
+        ledSetState(toLedState(state));
         printState();
     });
 }
@@ -148,16 +205,44 @@ void UIManager::onSpeakerSettingsChanged(
     const SpeakerManagerObserverInterface::Source& source,
     const SpeakerInterface::Type& type,
     const SpeakerInterface::SpeakerSettings& settings) {
-    m_executor.submit([source, type, settings]() {
+    m_executor.submit([this, source, type, settings]() {
         std::ostringstream oss;
         oss << "SOURCE:" << source << " TYPE:" << type << " VOLUME:" << static_cast<int>(settings.volume)
             << " MUTE:" << settings.mute;
         ConsolePrinter::prettyPrint(oss.str());
+        ledSetVolume(settings.volume);
+        sleep(1);
+        ledSetState(toLedState(m_dialogState));
+    });
+}
+
+void UIManager::onSetIndicator(avsCommon::avs::IndicatorState state) {
+    m_executor.submit([state]() {
+        std::ostringstream oss;
+        oss << "NOTIFICATION INDICATOR STATE: " << state;
+        ConsolePrinter::prettyPrint(oss.str());
+    });
+}
+
+void UIManager::onAlertStateChange(
+    const std::string& alertToken,
+    alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State state,
+    const std::string& reason) {
+    m_executor.submit([this, state]() {
+        std::ostringstream oss;
+        oss << "ALERT STATE: " << state;
+        ConsolePrinter::prettyPrint(oss.str());
+        ledSetState(toLedState(state));
+
     });
 }
 
 void UIManager::printWelcomeScreen() {
-    m_executor.submit([]() { ConsolePrinter::simplePrint(ALEXA_WELCOME_MESSAGE); });
+    m_executor.submit([this]() {
+        ConsolePrinter::simplePrint(ALEXA_WELCOME_MESSAGE);
+        // ensure that the leds are off
+        ledSetState(toLedState(DialogUXState::IDLE));
+    });
 }
 
 void UIManager::printHelpScreen() {
@@ -176,8 +261,25 @@ void UIManager::printSpeakerControlScreen() {
     m_executor.submit([]() { ConsolePrinter::simplePrint(SPEAKER_CONTROL_MESSAGE); });
 }
 
+void UIManager::printFirmwareVersionControlScreen() {
+    m_executor.submit([]() { ConsolePrinter::simplePrint(FIRMWARE_CONTROL_MESSAGE); });
+}
+
 void UIManager::printVolumeControlScreen() {
     m_executor.submit([]() { ConsolePrinter::simplePrint(VOLUME_CONTROL_MESSAGE); });
+}
+
+void UIManager::printESPControlScreen(bool support, const std::string& voiceEnergy, const std::string& ambientEnergy) {
+    m_executor.submit([support, voiceEnergy, ambientEnergy]() {
+        std::string screen = ESP_CONTROL_MESSAGE;
+        screen += "|\n";
+        screen += "| support       = ";
+        screen += support ? "true\n" : "false\n";
+        screen += "| voiceEnergy   = " + voiceEnergy + "\n";
+        screen += "| ambientEnergy = " + ambientEnergy + "\n";
+        screen += "+----------------------------------------------------------------------------+\n";
+        ConsolePrinter::simplePrint(screen);
+    });
 }
 
 void UIManager::printErrorScreen() {
@@ -185,11 +287,107 @@ void UIManager::printErrorScreen() {
 }
 
 void UIManager::microphoneOff() {
-    m_executor.submit([]() { ConsolePrinter::prettyPrint("Microphone Off!"); });
+    m_executor.submit([this]() {
+#ifdef PRIVACY_WORKING
+        onDialogUXStateChanged(DialogUXState::MIC_OFF);
+#else
+        // get rid of this case once privacy mode is working
+        ConsolePrinter::prettyPrint("MIC_OFF skipped");
+#endif
+    });
+}
+
+void UIManager::printResetConfirmation() {
+    m_executor.submit([]() { ConsolePrinter::simplePrint(RESET_CONFIRMATION); });
+}
+
+void UIManager::printResetWarning() {
+    m_executor.submit([]() { ConsolePrinter::prettyPrint(RESET_WARNING); });
 }
 
 void UIManager::microphoneOn() {
-    m_executor.submit([this]() { printState(); });
+    m_executor.submit([this]() {
+#ifdef PRIVACY_WORKING
+        onDialogUXStateChanged(DialogUXState::IDLE);
+#else
+        // get rid of this case and any #ifdef PRIVACY_WORKING
+        ConsolePrinter::prettyPrint("MIC_ON");
+#endif
+    });
+}
+
+const char* UIManager::toLedState(DialogUXState state)
+{
+    const char* led_state;
+    switch (state) {
+    case DialogUXState::IDLE:
+        led_state = "idle";
+    break;
+    case DialogUXState::LISTENING:
+        led_state = "listening";
+        break;
+    case DialogUXState::THINKING:
+        led_state = "thinking";
+        break;
+    case DialogUXState::SPEAKING:
+        led_state = "speaking";
+        break;
+    case DialogUXState::FINISHED:
+        led_state = "idle";
+    break;
+    case DialogUXState::MIC_OFF:
+        led_state = "mic_off";
+    break;
+    default:
+        ConsolePrinter::prettyPrint(DialogUXStateObserverInterface::stateToString(m_dialogState));
+        led_state = "idle";
+        break;
+    }
+    return led_state;
+}
+
+const char* UIManager::toLedState(
+    alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State state)
+{
+
+
+    const char* led_state;
+    switch (state) {
+    case alexaClientSDK::capabilityAgents::alerts::AlertObserverInterface::State::STARTED:
+        led_state = "alarm";
+    break;
+    default:
+        led_state = "idle";
+        break;
+    }
+    return led_state;
+}
+
+
+void UIManager::ledSetState(const char* led_state) {
+    /* TODO get LED constants from a header */
+    std::ofstream led_sysfs;
+    led_sysfs.open(LED_CTRL_STATE);
+    if (led_sysfs.is_open()) {
+        led_sysfs << led_state;
+        led_sysfs.close();
+    }
+}
+
+void UIManager::ledSetVolume(unsigned int volume) {
+    /* TODO get LED constants from a header */
+    std::ofstream volume_sysfs;
+    volume_sysfs.open(LED_CTRL_VOLUME);
+    int led_volume = 0;
+    if ( volume > 0 )
+        led_volume = volume / 10;
+    if ( led_volume > 10 )
+        ConsolePrinter::prettyPrint("Invalid volume!");
+    else if (volume_sysfs.is_open()) {
+        ConsolePrinter::prettyPrint("Setting volume");
+        volume_sysfs << led_volume;
+        volume_sysfs.close();
+    }
 }
 
 void UIManager::printState() {
@@ -198,29 +396,16 @@ void UIManager::printState() {
     } else if (m_connectionStatus == avsCommon::sdkInterfaces::ConnectionStatusObserverInterface::Status::PENDING) {
         ConsolePrinter::prettyPrint("Connecting...");
     } else if (m_connectionStatus == avsCommon::sdkInterfaces::ConnectionStatusObserverInterface::Status::CONNECTED) {
-        switch (m_dialogState) {
-            case DialogUXState::IDLE:
-                ConsolePrinter::prettyPrint("Alexa is currently idle!");
-                return;
-            case DialogUXState::LISTENING:
-                ConsolePrinter::prettyPrint("Listening...");
-                return;
-            case DialogUXState::THINKING:
-                ConsolePrinter::prettyPrint("Thinking...");
-                return;
-                ;
-            case DialogUXState::SPEAKING:
-                ConsolePrinter::prettyPrint("Speaking...");
-                return;
-            /*
-             * This is an intermediate state after a SPEAK directive is completed. In the case of a speech burst the
-             * next SPEAK could kick in or if its the last SPEAK directive ALEXA moves to the IDLE state. So we do
-             * nothing for this state.
-             */
-            case DialogUXState::FINISHED:
-                return;
-        }
+	ConsolePrinter::prettyPrint(DialogUXStateObserverInterface::stateToString(m_dialogState));
     }
+}
+
+void UIManager::printESPDataOverrideNotSupported() {
+    m_executor.submit([]() { ConsolePrinter::simplePrint("Cannot override ESP Value in this device."); });
+}
+
+void UIManager::printESPNotSupported() {
+    m_executor.submit([]() { ConsolePrinter::simplePrint("ESP is not supported in this device."); });
 }
 
 }  // namespace sampleApp

@@ -1,7 +1,5 @@
 /*
- * KittAiWakeWordDetector.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_KWD_KITT_AI_INCLUDE_KWD_KITT_AI_KEY_WORD_DETECTOR_H_
-#define ALEXA_CLIENT_SDK_KWD_KITT_AI_INCLUDE_KWD_KITT_AI_KEY_WORD_DETECTOR_H_
+#ifndef ALEXA_CLIENT_SDK_KWD_KITTAI_INCLUDE_KITTAI_KITTAIKEYWORDDETECTOR_H_
+#define ALEXA_CLIENT_SDK_KWD_KITTAI_INCLUDE_KITTAI_KITTAIKEYWORDDETECTOR_H_
 
 #include <atomic>
 #include <string>
@@ -176,4 +174,4 @@ private:
 }  // namespace kwd
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_KWD_KITT_AI_INCLUDE_KWD_KITT_AI_KEY_WORD_DETECTOR_H_
+#endif  // ALEXA_CLIENT_SDK_KWD_KITTAI_INCLUDE_KITTAI_KITTAIKEYWORDDETECTOR_H_

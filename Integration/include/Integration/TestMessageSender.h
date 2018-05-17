@@ -1,7 +1,5 @@
 /*
- * TestMessageSender.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_INTEGRATION_TEST_MESSAGE_SENDER_H
-#define ALEXA_CLIENT_SDK_INTEGRATION_TEST_MESSAGE_SENDER_H
+#ifndef ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TESTMESSAGESENDER_H_
+#define ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TESTMESSAGESENDER_H_
 
 #include <string>
 #include <chrono>
@@ -136,4 +134,4 @@ private:
 }  // namespace integration
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_INTEGRATION_TEST_MESSAGE_SENDER_H
+#endif  // ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_TESTMESSAGESENDER_H_

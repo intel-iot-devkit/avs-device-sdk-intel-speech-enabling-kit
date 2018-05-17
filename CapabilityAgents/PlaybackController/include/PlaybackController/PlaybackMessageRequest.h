@@ -1,7 +1,5 @@
 /*
- * PlaybackMessageRequest.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_PLAYBACK_CONTROLLER_INCLUDE_PLAYBACK_MESSAGE_REQUEST_H_
-#define ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_PLAYBACK_CONTROLLER_INCLUDE_PLAYBACK_MESSAGE_REQUEST_H_
+#ifndef ALEXA_CLIENT_SDK_CAPABILITYAGENTS_PLAYBACKCONTROLLER_INCLUDE_PLAYBACKCONTROLLER_PLAYBACKMESSAGEREQUEST_H_
+#define ALEXA_CLIENT_SDK_CAPABILITYAGENTS_PLAYBACKCONTROLLER_INCLUDE_PLAYBACKCONTROLLER_PLAYBACKMESSAGEREQUEST_H_
 
 #include <AVSCommon/AVS/MessageRequest.h>
 #include <AVSCommon/SDKInterfaces/MessageRequestObserverInterface.h>
@@ -43,7 +41,7 @@ public:
      * @c onSendCompleted is invoked.
      */
     PlaybackMessageRequest(
-        PlaybackController::Button button,
+        avsCommon::avs::PlaybackButton button,
         const std::string& jsonContent,
         std::shared_ptr<PlaybackController> playbackController);
 
@@ -57,11 +55,11 @@ private:
     std::shared_ptr<PlaybackController> m_playbackController;
 
     /// The @c Button pressed for this message request.
-    PlaybackController::Button m_button;
+    avsCommon::avs::PlaybackButton m_button;
 };
 
 }  // namespace playbackController
 }  // namespace capabilityAgents
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_CAPABILITY_AGENTS_PLAYBACK_CONTROLLER_INCLUDE_PLAYBACK_MESSAGE_REQUEST_H_
+#endif  // ALEXA_CLIENT_SDK_CAPABILITYAGENTS_PLAYBACKCONTROLLER_INCLUDE_PLAYBACKCONTROLLER_PLAYBACKMESSAGEREQUEST_H_

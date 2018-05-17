@@ -1,7 +1,5 @@
 /*
- * MediaPlayerInterface.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_MEDIA_PLAYER_MEDIA_PLAYER_INTERFACE_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_MEDIA_PLAYER_MEDIA_PLAYER_INTERFACE_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_MEDIAPLAYER_MEDIAPLAYERINTERFACE_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_MEDIAPLAYER_MEDIAPLAYERINTERFACE_H_
 
 #include <chrono>
 #include <cstdint>
@@ -24,6 +22,7 @@
 #include <memory>
 
 #include "AVSCommon/AVS/Attachment/AttachmentReader.h"
+#include "AVSCommon/Utils/AudioFormat.h"
 
 namespace alexaClientSDK {
 namespace avsCommon {
@@ -77,11 +76,13 @@ public:
      * @c MediaPlayerObserverInterface::onPlaybackStopped() with the previous source's id if there was a source set.
      *
      * @param attachmentReader Object with which to read an incoming audio attachment.
-     *
+     * @param format The audioFormat to be used to interpret raw audio data.
      * @return The @c SourceId that represents the source being handled as a result of this call. @c ERROR will be
      *     returned if the source failed to be set.
      */
-    virtual SourceId setSource(std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader) = 0;
+    virtual SourceId setSource(
+        std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader,
+        const avsCommon::utils::AudioFormat* format = nullptr) = 0;
 
     /**
      * Set a url source to play. The source should be set before making calls to any of the playback control APIs. If
@@ -91,11 +92,14 @@ public:
      * @c MediaPlayerObserverInterface::onPlaybackStopped() with the previous source's id if there was a source set.
      *
      * @param url The url to set as the source.
+     * @param offset An optional offset parameter to start playing from when a @c play() call is made.
      *
      * @return The @c SourceId that represents the source being handled as a result of this call. @c ERROR will be
      *     returned if the source failed to be set.
      */
-    virtual SourceId setSource(const std::string& url) = 0;
+    virtual SourceId setSource(
+        const std::string& url,
+        std::chrono::milliseconds offset = std::chrono::milliseconds::zero()) = 0;
 
     /**
      * Set an @c istream source to play. The source should be set before making calls to any of the playback control
@@ -201,29 +205,20 @@ public:
 
     /**
      * Returns the offset, in milliseconds, of the media source.
-     * If the id does not match the id of the active source, then @c MEDIA_PLAYER_INVALID_OFFSET will be returned.
      *
      * @param id The id of the source on which to operate.
      *
-     * @return If the specified source is playing, the offset in milliseconds that the source has been playing. If the
-     * specified source is not playing, @c MEDIA_PLAYER_INVALID_OFFSET will be returned.
+     * @return If the specified source is playing, the offset in milliseconds that the source has been playing
+     *      will be returned. If the specified source is not playing, the last offset it played will be returned.
      */
     virtual std::chrono::milliseconds getOffset(SourceId id) = 0;
 
     /**
-     * Set the offset for playback. A seek will be performed to the offset at the next @c play() command.
-     * If the id does not match the id of the active source, then @c false will be returned.
+     * Returns the number of bytes queued up in the media player buffers.
      *
-     * The following situations will reset the offset:
-     * @li A seek attempt is made (ie. via @c play()).
-     * @li A new source is set.
-     *
-     * @param id The id of the source on which to operate.
-     * @param offset The offset in milliseconds to seek to.
-     *
-     * @return @c true if the offset was successfully set, and @c false for any error.
+     * @return The number of bytes currently queued in this MediaPlayer's buffer.
      */
-    virtual bool setOffset(SourceId id, std::chrono::milliseconds offset) = 0;
+    virtual uint64_t getNumBytesBuffered() = 0;
 
     /**
      * Sets an observer to be notified when playback state changes.
@@ -239,4 +234,4 @@ public:
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_MEDIA_PLAYER_MEDIA_PLAYER_INTERFACE_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_MEDIAPLAYER_MEDIAPLAYERINTERFACE_H_

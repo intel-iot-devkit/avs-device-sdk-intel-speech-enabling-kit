@@ -1,7 +1,5 @@
 /*
- * TestMediaPlayer.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -40,7 +38,8 @@ TestMediaPlayer::~TestMediaPlayer() {
 }
 
 avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId TestMediaPlayer::setSource(
-    std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader) {
+    std::shared_ptr<avsCommon::avs::attachment::AttachmentReader> attachmentReader,
+    const avsCommon::utils::AudioFormat* audioFormat) {
     m_attachmentReader = std::move(attachmentReader);
     return ++g_sourceId;
 }
@@ -52,7 +51,9 @@ avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId TestMediaPlayer::s
     return ++g_sourceId;
 }
 
-avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId TestMediaPlayer::setSource(const std::string& url) {
+avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId TestMediaPlayer::setSource(
+    const std::string& url,
+    std::chrono::milliseconds offset) {
     return ++g_sourceId;
 }
 
@@ -98,16 +99,15 @@ std::chrono::milliseconds TestMediaPlayer::getOffset(avsCommon::utils::mediaPlay
     return std::chrono::milliseconds::zero();
 }
 
-bool TestMediaPlayer::setOffset(
-    avsCommon::utils::mediaPlayer::MediaPlayerInterface::SourceId id,
-    std::chrono::milliseconds offset) {
-    return true;
-}
-
 void TestMediaPlayer::setObserver(
     std::shared_ptr<avsCommon::utils::mediaPlayer::MediaPlayerObserverInterface> playerObserver) {
     m_observer = playerObserver;
 }
+
+uint64_t TestMediaPlayer::getNumBytesBuffered() {
+    return 0;
+}
+
 }  // namespace test
 }  // namespace integration
 }  // namespace alexaClientSDK

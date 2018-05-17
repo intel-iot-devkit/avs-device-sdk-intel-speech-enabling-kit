@@ -1,7 +1,5 @@
 /*
- * SensoryKeyWordDetector.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -212,7 +210,7 @@ SensoryKeywordDetector::SensoryKeywordDetector(
         AbstractKeywordDetector(keyWordObservers, keyWordDetectorStateObservers),
         m_stream{stream},
         m_session{nullptr},
-        m_maxSamplesPerPush{(audioFormat.sampleRateHz / HERTZ_PER_KILOHERTZ) * msToPushPerIteration.count()} {
+        m_maxSamplesPerPush((audioFormat.sampleRateHz / HERTZ_PER_KILOHERTZ) * msToPushPerIteration.count()) {
 }
 
 bool SensoryKeywordDetector::init(const std::string& modelFilePath) {
@@ -310,13 +308,18 @@ bool SensoryKeywordDetector::setUpRuntimeSettings(SnsrSession* session) {
 void SensoryKeywordDetector::detectionLoop() {
     m_beginIndexOfStreamReader = m_streamReader->tell();
     notifyKeyWordDetectorStateObservers(KeyWordDetectorStateObserverInterface::KeyWordDetectorState::ACTIVE);
-    int16_t audioDataToPush[m_maxSamplesPerPush];
+    std::vector<int16_t> audioDataToPush(m_maxSamplesPerPush);
     ssize_t wordsRead;
     SnsrRC result;
     while (!m_isShuttingDown) {
         bool didErrorOccur = false;
         wordsRead = readFromStream(
-            m_streamReader, m_stream, audioDataToPush, m_maxSamplesPerPush, TIMEOUT_FOR_READ_CALLS, &didErrorOccur);
+            m_streamReader,
+            m_stream,
+            audioDataToPush.data(),
+            audioDataToPush.size(),
+            TIMEOUT_FOR_READ_CALLS,
+            &didErrorOccur);
         if (didErrorOccur) {
             /*
              * Note that this does not include the overrun condition, which the base class handles by instructing the
@@ -353,7 +356,8 @@ void SensoryKeywordDetector::detectionLoop() {
             snsrSetStream(
                 m_session,
                 SNSR_SOURCE_AUDIO_PCM,
-                snsrStreamFromMemory(audioDataToPush, wordsRead * sizeof(*audioDataToPush), SNSR_ST_MODE_READ));
+                snsrStreamFromMemory(
+                    audioDataToPush.data(), wordsRead * sizeof(*audioDataToPush.data()), SNSR_ST_MODE_READ));
             result = snsrRun(m_session);
             switch (result) {
                 case SNSR_RC_STREAM_END:

@@ -1,7 +1,5 @@
 /*
- * BaseStreamSource.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -42,6 +40,49 @@ static const std::string TAG("BaseStreamSource");
 /// The interval to wait (in milliseconds) between successive attempts to read audio data when none is available.
 static const guint RETRY_INTERVALS_MILLISECONDS[] = {0, 10, 10, 10, 20, 20, 50, 100};
 
+/**
+ * Method that returns a string to be used in CAPS negotiation (generating right PADS between gstreamer elements based
+ * on audio data.) For raw PCM data without header audioFormat information needs to be passed explicitly for a
+ * mediaplayer to interpret the audio bytes.
+ */
+static std::string getCapsString(const AudioFormat& audioFormat) {
+    std::stringstream caps;
+    switch (audioFormat.encoding) {
+        case AudioFormat::Encoding::LPCM:
+            caps << "audio/x-raw";
+            break;
+        case AudioFormat::Encoding::OPUS:
+            ACSDK_ERROR(LX("MediaPlayer does not handle OPUS data"));
+            caps << " ";
+            break;
+    }
+
+    switch (audioFormat.endianness) {
+        case AudioFormat::Endianness::LITTLE:
+            audioFormat.dataSigned ? caps << ",format=S" << audioFormat.sampleSizeInBits << "LE"
+                                   : caps << ",format=U" << audioFormat.sampleSizeInBits << "LE";
+            break;
+        case AudioFormat::Endianness::BIG:
+            audioFormat.dataSigned ? caps << ",format=S" << audioFormat.sampleSizeInBits << "BE"
+                                   : caps << ",format=U" << audioFormat.sampleSizeInBits << "BE";
+            break;
+    }
+
+    switch (audioFormat.layout) {
+        case AudioFormat::Layout::INTERLEAVED:
+            caps << ",layout=interleaved";
+            break;
+        case AudioFormat::Layout::NON_INTERLEAVED:
+            caps << ",layout=non-interleaved";
+            break;
+    }
+
+    caps << ",channels=" << audioFormat.numChannels;
+    caps << ",rate=" << audioFormat.sampleRateHz;
+
+    return caps.str();
+}
+
 BaseStreamSource::BaseStreamSource(PipelineInterface* pipeline, const std::string& className) :
         SourceInterface(className),
         m_pipeline{pipeline},
@@ -51,6 +92,7 @@ BaseStreamSource::BaseStreamSource(PipelineInterface* pipeline, const std::strin
         m_handleEnoughDataFunction{[this]() { return handleEnoughData(); }},
         m_needDataHandlerId{0},
         m_enoughDataHandlerId{0},
+        m_seekDataHandlerId{0},
         m_needDataCallbackId{0},
         m_enoughDataCallbackId{0} {
 }
@@ -59,6 +101,18 @@ BaseStreamSource::~BaseStreamSource() {
     ACSDK_DEBUG9(LX("~BaseStreamSource"));
     g_signal_handler_disconnect(m_pipeline->getAppSrc(), m_needDataHandlerId);
     g_signal_handler_disconnect(m_pipeline->getAppSrc(), m_enoughDataHandlerId);
+    g_signal_handler_disconnect(m_pipeline->getAppSrc(), m_seekDataHandlerId);
+    if (m_pipeline->getPipeline()) {
+        if (m_pipeline->getAppSrc()) {
+            gst_bin_remove(GST_BIN(m_pipeline->getPipeline()), GST_ELEMENT(m_pipeline->getAppSrc()));
+        }
+        m_pipeline->setAppSrc(nullptr);
+
+        if (m_pipeline->getDecoder()) {
+            gst_bin_remove(GST_BIN(m_pipeline->getPipeline()), GST_ELEMENT(m_pipeline->getDecoder()));
+        }
+        m_pipeline->setDecoder(nullptr);
+    }
     {
         std::lock_guard<std::mutex> lock(m_callbackIdMutex);
         if (m_needDataCallbackId && !g_source_remove(m_needDataCallbackId)) {
@@ -71,13 +125,28 @@ BaseStreamSource::~BaseStreamSource() {
     uninstallOnReadDataHandler();
 }
 
-bool BaseStreamSource::init() {
+bool BaseStreamSource::init(const AudioFormat* audioFormat) {
     auto appsrc = reinterpret_cast<GstAppSrc*>(gst_element_factory_make("appsrc", "src"));
     if (!appsrc) {
         ACSDK_ERROR(LX("initFailed").d("reason", "createSourceElementFailed"));
         return false;
     }
-    gst_app_src_set_stream_type(appsrc, GST_APP_STREAM_TYPE_STREAM);
+    gst_app_src_set_stream_type(appsrc, GST_APP_STREAM_TYPE_SEEKABLE);
+
+    GstCaps* audioCaps = nullptr;
+
+    if (audioFormat) {
+        std::string caps = getCapsString(*audioFormat);
+        audioCaps = gst_caps_from_string(caps.c_str());
+        if (!audioCaps) {
+            ACSDK_ERROR(LX("BaseStreamSourceInitFailed").d("reason", "capsNullForRawAudioFormat"));
+            return false;
+        }
+        gst_app_src_set_caps(GST_APP_SRC(appsrc), audioCaps);
+        g_object_set(G_OBJECT(appsrc), "format", GST_FORMAT_TIME, NULL);
+    } else {
+        ACSDK_DEBUG9(LX("initNoAudioFormat"));
+    }
 
     auto decoder = gst_element_factory_make("decodebin", "decoder");
     if (!decoder) {
@@ -127,6 +196,19 @@ bool BaseStreamSource::init() {
         ACSDK_ERROR(LX("initFailed").d("reason", "connectEnoughDataSignalFailed"));
         return false;
     }
+    /*
+     * When the appsrc needs to seek to a position, it emits the signal seek-data. Connect the seek-data signal to the
+     * onSeekData callback which handles seeking to the appropriate position.
+     */
+    m_seekDataHandlerId = g_signal_connect(appsrc, "seek-data", G_CALLBACK(onSeekData), this);
+    if (0 == m_seekDataHandlerId) {
+        ACSDK_ERROR(LX("initFailed").d("reason", "connectSeekDataSignalFailed"));
+        return false;
+    }
+
+    if (audioCaps) {
+        gst_caps_unref(audioCaps);
+    }
 
     m_pipeline->setAppSrc(appsrc);
     m_pipeline->setDecoder(decoder);
@@ -149,7 +231,7 @@ void BaseStreamSource::signalEndOfData() {
                         .d("reason", "gstAppSrcEndOfStreamFailed")
                         .d("result", gst_flow_get_name(flowRet)));
     }
-    close();
+    ACSDK_DEBUG9(LX("gstAppSrcEndOfStreamSuccess"));
     clearOnReadDataHandler();
 }
 
@@ -243,6 +325,10 @@ gboolean BaseStreamSource::handleEnoughData() {
     m_enoughDataCallbackId = 0;
     uninstallOnReadDataHandler();
     return false;
+}
+
+gboolean BaseStreamSource::onSeekData(GstElement* pipeline, guint64 offset, gpointer pointer) {
+    return static_cast<BaseStreamSource*>(pointer)->handleSeekData(offset);
 }
 
 gboolean BaseStreamSource::onReadData(gpointer pointer) {

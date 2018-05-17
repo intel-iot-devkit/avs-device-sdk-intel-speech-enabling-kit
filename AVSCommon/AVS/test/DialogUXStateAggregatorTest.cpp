@@ -1,7 +1,5 @@
 /*
- * DialogUXStateAggregatorTest.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -271,7 +269,7 @@ TEST_F(DialogUXAggregatorTest, busyThenReceiveThenSpeakGoesToSpeak) {
 
     m_aggregator->receive("", "");
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
 
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::SPEAKING);
 }
@@ -288,15 +286,15 @@ TEST_F(DialogUXAggregatorTest, busyThenReceiveThenSpeakGoesToSpeakButNotIdle) {
 
     m_aggregator->receive("", "");
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
 
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::SPEAKING);
 
     assertNoStateChange(m_testObserver);
 }
 
-/// Tests that a SpeechSynthesizer finished state leads to the IDLE state.
-TEST_F(DialogUXAggregatorTest, speakingFinishedGoesToIdle) {
+/// Tests that both SpeechSynthesizer and AudioInputProcessor finished/idle state leadss to the IDLE state.
+TEST_F(DialogUXAggregatorTest, speakingAndRecognizingFinishedGoesToIdle) {
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::IDLE);
 
     m_aggregator->onStateChanged(AudioInputProcessorObserverInterface::State::BUSY);
@@ -304,12 +302,37 @@ TEST_F(DialogUXAggregatorTest, speakingFinishedGoesToIdle) {
 
     m_aggregator->receive("", "");
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
 
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::SPEAKING);
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED);
+    m_aggregator->onStateChanged(AudioInputProcessorObserverInterface::State::IDLE);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
 
+    assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::IDLE);
+}
+
+/// Tests that SpeechSynthesizer or AudioInputProcessor non-idle state prevents the IDLE state.
+TEST_F(DialogUXAggregatorTest, nonIdleObservantsPreventsIdle) {
+    assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::IDLE);
+
+    // AIP is active, SS is not. Expected: non idle
+    m_aggregator->onStateChanged(AudioInputProcessorObserverInterface::State::BUSY);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
+    assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::THINKING);
+
+    // Both AIP and SS are inactive. Expected: idle
+    m_aggregator->onStateChanged(AudioInputProcessorObserverInterface::State::IDLE);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
+    assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::IDLE);
+
+    // AIP is inactive, SS is active. Expected: non-idle
+    m_aggregator->receive("", "");
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
+    assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::SPEAKING);
+
+    // AIP is inactive, SS is inactive: Expected: idle
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::IDLE);
 }
 
@@ -322,11 +345,11 @@ TEST_F(DialogUXAggregatorTest, speakingFinishedDoesNotGoesToIdleImmediately) {
 
     m_aggregator->receive("", "");
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
 
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::SPEAKING);
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::FINISHED);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::FINISHED);
 
     assertNoStateChange(m_testObserver);
 }
@@ -339,7 +362,7 @@ TEST_F(DialogUXAggregatorTest, simpleReceiveDoesNothing) {
 
     assertNoStateChange(m_testObserver);
 
-    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserver::SpeechSynthesizerState::PLAYING);
+    m_aggregator->onStateChanged(sdkInterfaces::SpeechSynthesizerObserverInterface::SpeechSynthesizerState::PLAYING);
 
     assertStateChange(m_testObserver, DialogUXStateObserverInterface::DialogUXState::SPEAKING);
 

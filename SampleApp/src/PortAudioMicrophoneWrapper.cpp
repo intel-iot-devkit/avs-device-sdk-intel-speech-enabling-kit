@@ -1,7 +1,5 @@
 /*
- * PortAudioMicrophoneWrapper.cpp
- *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,6 +13,12 @@
  * permissions and limitations under the License.
  */
 
+#include <cstring>
+#include <string>
+
+#include <rapidjson/document.h>
+
+#include <AVSCommon/Utils/Configuration/ConfigurationNode.h>
 #include "SampleApp/PortAudioMicrophoneWrapper.h"
 #include "SampleApp/ConsolePrinter.h"
 
@@ -26,7 +30,12 @@ using avsCommon::avs::AudioInputStream;
 static const int NUM_INPUT_CHANNELS = 1;
 static const int NUM_OUTPUT_CHANNELS = 0;
 static const double SAMPLE_RATE = 16000;
+static const char* DEVICE_NAME = "s1000";
 static const unsigned long PREFERRED_SAMPLES_PER_CALLBACK = paFramesPerBufferUnspecified;
+
+static const std::string SAMPLE_APP_CONFIG_ROOT_KEY("sampleApp");
+static const std::string PORTAUDIO_CONFIG_ROOT_KEY("portAudio");
+static const std::string PORTAUDIO_CONFIG_SUGGESTED_LATENCY_KEY("suggestedLatency");
 
 /**
  * Simple helper method for printing a message using the @c ConsolePrinter with
@@ -100,20 +109,60 @@ bool PortAudioMicrophoneWrapper::closeStream() {
 bool PortAudioMicrophoneWrapper::openStream() {
     PaError err;
     err = Pa_Initialize();
+    int numDevices, devId;
+    const   PaDeviceInfo *deviceInfo;
+
     if (err != paNoError) {
         printPaError(err, "Failed to initialize PortAudio");
         return false;
     }
 
-    err = Pa_OpenDefaultStream(
-        &m_paStream,
-        NUM_INPUT_CHANNELS,
-        NUM_OUTPUT_CHANNELS,
-        paInt16,
-        SAMPLE_RATE,
-        PREFERRED_SAMPLES_PER_CALLBACK,
-        PortAudioCallback,
-        this);
+    numDevices = Pa_GetDeviceCount();
+    if( numDevices < 0 ) {
+        err = numDevices;
+        printPaError(err, "ERROR: Pa_CountDevices returned error\n");
+        return false;
+    }
+    for( devId=0; devId < numDevices; devId++ ) {
+        deviceInfo = Pa_GetDeviceInfo( devId );
+        if (strncmp(deviceInfo->name, DEVICE_NAME, 5) == 0)
+        {
+            break;
+        }
+    }
+    if( devId == numDevices) {
+        printPaError(err, "ERROR: Could not find audio recording device!\n");
+        return false;
+    }
+
+    double srate = SAMPLE_RATE;
+    unsigned long framesPerBuffer = paFramesPerBufferUnspecified;
+    PaStreamParameters inputParameters;
+    bzero( &inputParameters, sizeof( inputParameters ) );
+    inputParameters.channelCount = NUM_INPUT_CHANNELS;
+    inputParameters.device = devId;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
+    inputParameters.sampleFormat = paInt16;
+    inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency ;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
+    err = Pa_OpenStream(
+    PaStreamParameters inputParameters;
+    bzero( &inputParameters, sizeof( inputParameters ) );
+    inputParameters.channelCount = NUM_INPUT_CHANNELS;
+    inputParameters.device = devId;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
+    inputParameters.sampleFormat = paInt16;
+    inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency ;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
+    err = Pa_OpenStream(
+                    &m_paStream,
+                    &inputParameters,
+                    NULL,
+                    srate,
+                    framesPerBuffer,
+                    paNoFlag,
+                    PortAudioCallback,
+                    (void *)this );
 
     if (err != paNoError) {
         printPaError(err, "Failed to open PortAudio default stream");
@@ -171,8 +220,20 @@ int PortAudioMicrophoneWrapper::PortAudioCallback(
     return paContinue;
 }
 
-bool PortAudioMicrophoneWrapper::isStreaming() {
-    return m_streaming;
+bool PortAudioMicrophoneWrapper::getConfigSuggestedLatency(PaTime& suggestedLatency) {
+    bool latencyInConfig = false;
+    auto config = avsCommon::utils::configuration::ConfigurationNode::getRoot()[SAMPLE_APP_CONFIG_ROOT_KEY]
+                                                                               [PORTAUDIO_CONFIG_ROOT_KEY];
+    if (config) {
+        latencyInConfig = config.getValue(
+            PORTAUDIO_CONFIG_SUGGESTED_LATENCY_KEY,
+            &suggestedLatency,
+            suggestedLatency,
+            &rapidjson::Value::IsDouble,
+            &rapidjson::Value::GetDouble);
+    }
+
+    return latencyInConfig;
 }
 
 }  // namespace sampleApp

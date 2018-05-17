@@ -1,7 +1,5 @@
 /*
- * ObservableMessageRequest.h
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_OBSERVABLE_MESSAGE_REQUEST_H_
-#define ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_OBSERVABLE_MESSAGE_REQUEST_H_
+#ifndef ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_OBSERVABLEMESSAGEREQUEST_H_
+#define ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_OBSERVABLEMESSAGEREQUEST_H_
 
 #include <atomic>
 #include <chrono>
@@ -73,4 +71,4 @@ private:
 }  // namespace integration
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_OBSERVABLE_MESSAGE_REQUEST_H_
+#endif  // ALEXA_CLIENT_SDK_INTEGRATION_INCLUDE_INTEGRATION_OBSERVABLEMESSAGEREQUEST_H_

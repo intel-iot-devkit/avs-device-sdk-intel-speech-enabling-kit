@@ -1,7 +1,5 @@
 /*
- * HTTP2Stream.h
- *
- * Copyright 2016-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXACLIENTSDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2_STREAM_H_
-#define ALEXACLIENTSDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2_STREAM_H_
+#ifndef ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2STREAM_H_
+#define ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2STREAM_H_
 
 #include <atomic>
 #include <chrono>
@@ -26,6 +24,7 @@
 
 #include <AVSCommon/AVS/Attachment/AttachmentManager.h>
 #include <AVSCommon/Utils/LibcurlUtils/CurlEasyHandleWrapper.h>
+#include <AVSCommon/Utils/Logger/LogStringFormatter.h>
 #include <AVSCommon/AVS/MessageRequest.h>
 #include <AVSCommon/SDKInterfaces/MessageRequestObserverInterface.h>
 
@@ -51,15 +50,6 @@ class HTTP2Transport;
  */
 class HTTP2Stream {
 public:
-    enum HTTPResponseCodes {
-        /// No HTTP response received.
-        NO_RESPONSE_RECEIVED = 0,
-        /// HTTP Success with reponse payload.
-        SUCCESS_OK = 200,
-        /// HTTP Succcess with no response payload.
-        SUCCESS_NO_CONTENT = 204
-    };
-
     /**
      * Constructor.
      *
@@ -213,6 +203,14 @@ public:
      */
     bool hasProgressTimedOut() const;
 
+    /**
+     * Return a reference to the LogStringFormatter owned by this object.  This is to allow a callback that uses this
+     * object to get access to a known good LogStringFormatter.
+     *
+     * @return A reference to a LogStringFormatter.
+     */
+    const avsCommon::utils::logger::LogStringFormatter& getLogFormatter() const;
+
 private:
     /**
      * Configure the associated curl easy handle with options common to GET and POST
@@ -284,6 +282,8 @@ private:
     std::atomic<std::chrono::steady_clock::rep> m_progressTimeout;
     /// Last time something was transferred.
     std::atomic<std::chrono::steady_clock::rep> m_timeOfLastTransfer;
+    /// Object to format log strings correctly.
+    avsCommon::utils::logger::LogStringFormatter m_logFormatter;
 };
 
 template <class TickType, class TickPeriod>
@@ -294,4 +294,4 @@ void HTTP2Stream::setProgressTimeout(std::chrono::duration<TickType, TickPeriod>
 }  // namespace acl
 }  // namespace alexaClientSDK
 
-#endif  // ALEXACLIENTSDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2_STREAM_H_
+#endif  // ALEXA_CLIENT_SDK_ACL_INCLUDE_ACL_TRANSPORT_HTTP2STREAM_H_

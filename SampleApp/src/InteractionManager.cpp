@@ -1,7 +1,5 @@
 /*
- * InteractionManager.cpp
- *
- * Copyright (c) 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,7 +13,9 @@
  * permissions and limitations under the License.
  */
 
+#include "ESP/ESPDataProviderInterface.h"
 #include "SampleApp/InteractionManager.h"
+#include "RegistrationManager/CustomerDataManager.h"
 
 namespace alexaClientSDK {
 namespace sampleApp {
@@ -27,23 +27,25 @@ InteractionManager::InteractionManager(
     capabilityAgents::aip::AudioProvider holdToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider wakeWordAudioProvider,
-    bool startPaStream) :
-        RequiresShutdown{"InteractionManager"},
+    std::shared_ptr<esp::ESPDataProviderInterface> espProvider,
+    std::shared_ptr<esp::ESPDataModifierInterface> espModifier) :
+	    RequiresShutdown{"InteractionManager"},
         m_client{client},
         m_micWrapper{micWrapper},
         m_userInterface{userInterface},
+        m_espProvider{espProvider},
+        m_espModifier{espModifier},
         m_holdToTalkAudioProvider{holdToTalkAudioProvider},
         m_tapToTalkAudioProvider{tapToTalkAudioProvider},
         m_wakeWordAudioProvider{wakeWordAudioProvider},
         m_isHoldOccurring{false},
-        m_isTapOccurring{false}
+        m_isTapOccurring{false},
+        m_isMicOn{true}
 {
     if(startPaStream) {
         m_micWrapper->startStreamingMicrophoneData();
     }
 
-    auto guiRenderer = std::make_shared<GuiRenderer>();
-    m_client->addTemplateRuntimeObserver(guiRenderer);
 };
 
 void InteractionManager::begin() {
@@ -78,13 +80,18 @@ void InteractionManager::microphoneToggle() {
         if (!m_wakeWordAudioProvider) {
             return;
         }
-        if (m_micWrapper->isStreaming()) {
-            m_micWrapper->stopStreamingMicrophoneData();
+        if (m_isMicOn) {
+            m_isMicOn = false;
+            if (m_micWrapper->isStreaming())
+                m_micWrapper->stopStreamingMicrophoneData();
             m_userInterface->microphoneOff();
         } else {
+            m_isMicOn = true;
+#ifndef KWD_HARDWARE
             m_micWrapper->startStreamingMicrophoneData();
+#endif
             m_userInterface->microphoneOn();
-        }
+	}
     });
 }
 
@@ -126,23 +133,31 @@ void InteractionManager::stopForegroundActivity() {
 }
 
 void InteractionManager::playbackPlay() {
-    m_executor.submit([this]() { m_client->getPlaybackControllerInterface().playButtonPressed(); });
+    m_executor.submit([this]() { m_client->getPlaybackRouter()->playButtonPressed(); });
 }
 
 void InteractionManager::playbackPause() {
-    m_executor.submit([this]() { m_client->getPlaybackControllerInterface().pauseButtonPressed(); });
+    m_executor.submit([this]() { m_client->getPlaybackRouter()->pauseButtonPressed(); });
 }
 
 void InteractionManager::playbackNext() {
-    m_executor.submit([this]() { m_client->getPlaybackControllerInterface().nextButtonPressed(); });
+    m_executor.submit([this]() { m_client->getPlaybackRouter()->nextButtonPressed(); });
 }
 
 void InteractionManager::playbackPrevious() {
-    m_executor.submit([this]() { m_client->getPlaybackControllerInterface().previousButtonPressed(); });
+    m_executor.submit([this]() { m_client->getPlaybackRouter()->previousButtonPressed(); });
 }
 
 void InteractionManager::speakerControl() {
     m_executor.submit([this]() { m_userInterface->printSpeakerControlScreen(); });
+}
+
+void InteractionManager::firmwareVersionControl() {
+    m_executor.submit([this]() { m_userInterface->printFirmwareVersionControlScreen(); });
+}
+
+void InteractionManager::setFirmwareVersion(avsCommon::sdkInterfaces::softwareInfo::FirmwareVersion firmwareVersion) {
+    m_executor.submit([this, firmwareVersion]() { m_client->setFirmwareVersion(firmwareVersion); });
 }
 
 void InteractionManager::volumeControl() {
@@ -176,9 +191,72 @@ void InteractionManager::setMute(avsCommon::sdkInterfaces::SpeakerInterface::Typ
     });
 }
 
+void InteractionManager::confirmResetDevice() {
+    m_executor.submit([this]() { m_userInterface->printResetConfirmation(); });
+}
+
+void InteractionManager::resetDevice() {
+    // This is a blocking operation. No interaction will be allowed during / after resetDevice
+    auto result = m_executor.submit([this]() {
+        m_client->getRegistrationManager()->logout();
+        m_userInterface->printResetWarning();
+    });
+    result.wait();
+}
+
+void InteractionManager::espControl() {
+    m_executor.submit([this]() {
+        if (m_espProvider) {
+            auto espData = m_espProvider->getESPData();
+            m_userInterface->printESPControlScreen(
+                m_espProvider->isEnabled(), espData.getVoiceEnergy(), espData.getAmbientEnergy());
+        } else {
+            m_userInterface->printESPNotSupported();
+        }
+    });
+}
+
+void InteractionManager::toggleESPSupport() {
+    m_executor.submit([this]() {
+        if (m_espProvider) {
+            m_espProvider->isEnabled() ? m_espProvider->disable() : m_espProvider->enable();
+        } else {
+            m_userInterface->printESPNotSupported();
+        }
+    });
+}
+
+void InteractionManager::setESPVoiceEnergy(const std::string& voiceEnergy) {
+    m_executor.submit([this, voiceEnergy]() {
+        if (m_espProvider) {
+            if (m_espModifier) {
+                m_espModifier->setVoiceEnergy(voiceEnergy);
+            } else {
+                m_userInterface->printESPDataOverrideNotSupported();
+            }
+        } else {
+            m_userInterface->printESPNotSupported();
+        }
+    });
+}
+
+void InteractionManager::setESPAmbientEnergy(const std::string& ambientEnergy) {
+    m_executor.submit([this, ambientEnergy]() {
+        if (m_espProvider) {
+            if (m_espModifier) {
+                m_espModifier->setAmbientEnergy(ambientEnergy);
+            } else {
+                m_userInterface->printESPDataOverrideNotSupported();
+            }
+        } else {
+            m_userInterface->printESPNotSupported();
+        }
+    });
+}
+
 void InteractionManager::onDialogUXStateChanged(DialogUXState state) {
     // reset tap-to-talk state
-    if (DialogUXState::IDLE == state) {
+    if (DialogUXState::LISTENING != state) {
         m_isTapOccurring = false;
     }
 }

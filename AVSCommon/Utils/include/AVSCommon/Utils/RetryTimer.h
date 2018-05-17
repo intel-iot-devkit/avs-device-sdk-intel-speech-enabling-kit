@@ -1,7 +1,5 @@
 /*
- * RetryTimer.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,10 +13,11 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_RETRY_TIMER_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_RETRY_TIMER_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_RETRYTIMER_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_RETRYTIMER_H_
 
 #include <chrono>
+#include <vector>
 
 namespace alexaClientSDK {
 namespace avsCommon {
@@ -34,29 +33,26 @@ public:
      * Constructor.
      *
      * @param retryTable The table with entries for retry times.
-     * @param retrySize The size of the retry table.
      */
-    RetryTimer(int* retryTable, int retrySize);
+    RetryTimer(const std::vector<int>& retryTable);
 
     /**
      * Constructor.
      *
      * @param retryTable The table with entries for retry times.
-     * @param retrySize The size of the retry table.
-     * @param randomizationFactor The randomization factor to be used while computing the distribution range around the
-     * retry time.
+     * @param randomizationPercentage The randomization percentage to be used while computing the distribution range
+     * around the retry time.
      */
-    RetryTimer(int* retryTable, int retrySize, double randomizationFactor);
+    RetryTimer(const std::vector<int>& retryTable, int randomizationPercentage);
 
     /**
      * Constructor.
      *
      * @param retryTable The table with entries for retry times.
-     * @param retrySize The size of the retry table.
-     * @param decreaseFactor The lower bound of the retry time duration.
-     * @param increaseFactor upper bound of the retry time duration.
+     * @param decreasePercentage The lower bound of the retry time duration.
+     * @param increasePercentage The upper bound of the retry time duration.
      */
-    RetryTimer(int* retryTable, int retrySize, double decreaseFactor, double increaseFactor);
+    RetryTimer(const std::vector<int>& retryTable, int decreasePercentage, int increasePercentage);
 
     /**
      * Method to return a randomized delay in milliseconds when threads are waiting on an event.
@@ -64,24 +60,24 @@ public:
      * @param retryCount The number of retries.
      * @return delay in milliseconds.
      */
-    std::chrono::milliseconds calculateTimeToRetry(int retryCount);
+    std::chrono::milliseconds calculateTimeToRetry(int retryCount) const;
 
 private:
     /// Retry table with retry time in milliseconds.
-    int* m_RetryTable;
+    const std::vector<int> m_RetryTable;
 
     /// Size of the retry table.
-    int m_RetrySize;
+    const size_t m_RetrySize;
 
-    /// Lower bound of the retry time duration range.
-    double m_RetryDecreaseFactor;
+    /// The lower bound (as a percentage) for randomizing the next retry time.
+    const int m_RetryDecreasePercentage;
 
-    /// Upper bound of the retry time duration range.
-    double m_RetryIncreaseFactor;
+    /// The upper bound (as a percentage) for randomizing the next retry time.
+    const int m_RetryIncreasePercentage;
 };
 
 }  // namespace utils
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_RETRY_TIMER_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_RETRYTIMER_H_

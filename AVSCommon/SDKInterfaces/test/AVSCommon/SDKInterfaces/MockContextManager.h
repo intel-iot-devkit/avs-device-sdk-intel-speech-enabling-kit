@@ -1,7 +1,5 @@
 /*
- * MockContextManager.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,8 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_TEST_AVS_COMMON_SDK_INTERFACES_MOCK_CONTEXT_MANAGER_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_TEST_AVS_COMMON_SDK_INTERFACES_MOCK_CONTEXT_MANAGER_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_TEST_AVSCOMMON_SDKINTERFACES_MOCKCONTEXTMANAGER_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_TEST_AVSCOMMON_SDKINTERFACES_MOCKCONTEXTMANAGER_H_
 
 #include "AVSCommon/SDKInterfaces/ContextManagerInterface.h"
 #include <gmock/gmock.h>
@@ -48,4 +46,4 @@ public:
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_SDK_INTERFACES_TEST_AVS_COMMON_SDK_INTERFACES_MOCK_CONTEXT_MANAGER_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_SDKINTERFACES_TEST_AVSCOMMON_SDKINTERFACES_MOCKCONTEXTMANAGER_H_

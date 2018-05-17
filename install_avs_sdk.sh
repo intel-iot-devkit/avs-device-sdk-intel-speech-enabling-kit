@@ -124,6 +124,7 @@ SDK_TIMER_SHORT_SOUND_FILE_PATH="$sound_files/med_system_alerts_melodic_02_short
 SDK_SQLITE_DATABASE_FILE_PATH="$app_necessities/alerts.db"
 SDK_SQLITE_SETTINGS_DATABASE_FILE_PATH="$app_necessities/settings.db"
 SDK_CERTIFIED_SENDER_DATABASE_FILE_PATH="$app_necessities/certifiedSender.db"
+SDK_NOTIFICATIONS_DATABASE_FILE_PATH="$app_necessities/notifications.db"
 
 config_template="$git_repo/Integration/$CONFIG_JSON"
 config_template_no_scratch="$sdk_build/Integration/$CONFIG_JSON_NO_SCRATCH"

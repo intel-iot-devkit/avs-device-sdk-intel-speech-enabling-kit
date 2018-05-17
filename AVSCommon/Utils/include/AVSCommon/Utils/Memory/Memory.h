@@ -1,7 +1,5 @@
 /*
- * Memory.h
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -20,8 +18,8 @@
  * retrieved Dec. 21, 2016, as indicated below.
  */
 
-#ifndef ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_MEMORY_MEMORY_H_
-#define ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_MEMORY_MEMORY_H_
+#ifndef ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_MEMORY_MEMORY_H_
+#define ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_MEMORY_MEMORY_H_
 
 #include <memory>
 #include <utility>
@@ -43,4 +41,4 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 }  // namespace avsCommon
 }  // namespace alexaClientSDK
 
-#endif  // ALEXA_CLIENT_SDK_AVS_COMMON_UTILS_INCLUDE_AVS_COMMON_UTILS_MEMORY_MEMORY_H_
+#endif  // ALEXA_CLIENT_SDK_AVSCOMMON_UTILS_INCLUDE_AVSCOMMON_UTILS_MEMORY_MEMORY_H_

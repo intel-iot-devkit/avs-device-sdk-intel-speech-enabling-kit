@@ -1,7 +1,5 @@
 /*
- * AlertsIntegrationTest.cpp
- *
- * Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -34,20 +32,21 @@
 #include "AIP/AudioInputProcessor.h"
 #include "AIP/AudioProvider.h"
 #include "AIP/Initiator.h"
-#include "Alerts/AlertsCapabilityAgent.h"
-#include "Alerts/AlertObserverInterface.h"
-#include "Alerts/Storage/SQLiteAlertStorage.h"
-#include "AuthDelegate/AuthDelegate.h"
 #include "AVSCommon/AVS/Attachment/AttachmentManager.h"
 #include "AVSCommon/AVS/Attachment/InProcessAttachmentReader.h"
 #include "AVSCommon/AVS/Attachment/InProcessAttachmentWriter.h"
 #include "AVSCommon/AVS/BlockingPolicy.h"
-#include "AVSCommon/Utils/JSON/JSONUtils.h"
-#include "AVSCommon/Utils/LibcurlUtils/HTTPContentFetcherFactory.h"
+#include "AVSCommon/AVS/Initialization/AlexaClientSDKInit.h"
 #include "AVSCommon/SDKInterfaces/DirectiveHandlerInterface.h"
 #include "AVSCommon/SDKInterfaces/DirectiveHandlerResultInterface.h"
-#include "AVSCommon/AVS/Initialization/AlexaClientSDKInit.h"
+#include "AVSCommon/Utils/JSON/JSONUtils.h"
+#include "AVSCommon/Utils/LibcurlUtils/HTTPContentFetcherFactory.h"
 #include "AVSCommon/Utils/Logger/LogEntry.h"
+#include "Alerts/AlertObserverInterface.h"
+#include "Alerts/AlertsCapabilityAgent.h"
+#include "Alerts/Storage/SQLiteAlertStorage.h"
+#include "Audio/AlertsAudioFactory.h"
+#include "AuthDelegate/AuthDelegate.h"
 #include "CertifiedSender/CertifiedSender.h"
 #include "CertifiedSender/SQLiteMessageStorage.h"
 #include "ContextManager/ContextManager.h"
@@ -55,11 +54,12 @@
 #include "Integration/ClientMessageHandler.h"
 #include "Integration/ConnectionStatusObserver.h"
 #include "Integration/ObservableMessageRequest.h"
-#include "Integration/TestMessageSender.h"
+#include "Integration/TestAlertObserver.h"
 #include "Integration/TestDirectiveHandler.h"
 #include "Integration/TestExceptionEncounteredSender.h"
-#include "Integration/TestAlertObserver.h"
+#include "Integration/TestMessageSender.h"
 #include "Integration/TestSpeechSynthesizerObserver.h"
+#include "RegistrationManager/CustomerDataManager.h"
 #include "SpeechSynthesizer/SpeechSynthesizer.h"
 #include "System/UserInactivityMonitor.h"
 
@@ -278,7 +278,7 @@ protected:
             m_messageRouter, isEnabled, m_connectionStatusObserver, m_messageInterpreter);
         ASSERT_NE(nullptr, m_avsConnectionManager);
 
-        m_focusManager = std::make_shared<FocusManager>();
+        m_focusManager = std::make_shared<FocusManager>(FocusManager::DEFAULT_AUDIO_CHANNELS);
         m_testContentClient = std::make_shared<TestClient>();
         ASSERT_TRUE(m_focusManager->acquireChannel(
             FocusManager::CONTENT_CHANNEL_NAME, m_testContentClient, CONTENT_ACTIVITY_ID));
@@ -351,12 +351,13 @@ protected:
             m_avsConnectionManager,
             m_focusManager,
             m_contextManager,
-            m_attachmentManager,
-            m_exceptionEncounteredSender);
+            m_exceptionEncounteredSender,
+            m_dialogUXStateAggregator);
         ASSERT_NE(nullptr, m_speechSynthesizer);
         m_directiveSequencer->addDirectiveHandler(m_speechSynthesizer);
         m_speechSynthesizerObserver = std::make_shared<TestSpeechSynthesizerObserver>();
         m_speechSynthesizer->addObserver(m_speechSynthesizerObserver);
+        m_speechSynthesizer->addObserver(m_dialogUXStateAggregator);
 
 #ifdef GSTREAMER_MEDIA_PLAYER
         m_rendererMediaPlayer = MediaPlayer::create(nullptr);
@@ -365,14 +366,23 @@ protected:
 #endif
         m_alertRenderer = renderer::Renderer::create(m_rendererMediaPlayer);
 
-        m_alertStorage = std::make_shared<storage::SQLiteAlertStorage>();
+        auto alertsAudioFactory = std::make_shared<applicationUtilities::resources::audio::AlertsAudioFactory>();
+
+        m_alertStorage = capabilityAgents::alerts::storage::SQLiteAlertStorage::create(
+            avsCommon::utils::configuration::ConfigurationNode::getRoot(), alertsAudioFactory);
 
         m_alertObserver = std::make_shared<TestAlertObserver>();
 
-        auto messageStorage = std::make_shared<SQLiteMessageStorage>();
+        auto messageStorage =
+            SQLiteMessageStorage::create(avsCommon::utils::configuration::ConfigurationNode::getRoot());
+
+        m_customerDataManager = std::make_shared<registrationManager::CustomerDataManager>();
 
         m_certifiedSender = CertifiedSender::create(
-            m_avsConnectionManager, m_avsConnectionManager->getConnectionManager(), messageStorage);
+            m_avsConnectionManager,
+            m_avsConnectionManager->getConnectionManager(),
+            std::move(messageStorage),
+            m_customerDataManager);
 
         m_alertsAgent = AlertsCapabilityAgent::create(
             m_avsConnectionManager,
@@ -381,7 +391,9 @@ protected:
             m_contextManager,
             m_exceptionEncounteredSender,
             m_alertStorage,
-            m_alertRenderer);
+            alertsAudioFactory,
+            m_alertRenderer,
+            m_customerDataManager);
         ASSERT_NE(m_alertsAgent, nullptr);
         m_alertsAgent->addObserver(m_alertObserver);
         m_alertsAgent->onLocalStop();
@@ -526,7 +538,7 @@ protected:
     std::shared_ptr<SpeechSynthesizer> m_speechSynthesizer;
     std::shared_ptr<AlertsCapabilityAgent> m_alertsAgent;
     std::shared_ptr<TestSpeechSynthesizerObserver> m_speechSynthesizerObserver;
-    std::shared_ptr<storage::SQLiteAlertStorage> m_alertStorage;
+    std::shared_ptr<capabilityAgents::alerts::storage::SQLiteAlertStorage> m_alertStorage;
     std::shared_ptr<renderer::RendererInterface> m_alertRenderer;
     std::shared_ptr<TestAlertObserver> m_alertObserver;
     std::shared_ptr<holdToTalkButton> m_holdToTalkButton;
@@ -536,6 +548,7 @@ protected:
     std::shared_ptr<AudioInputStream> m_AudioBuffer;
     std::shared_ptr<AudioInputProcessor> m_AudioInputProcessor;
     std::shared_ptr<UserInactivityMonitor> m_userInactivityMonitor;
+    std::shared_ptr<registrationManager::CustomerDataManager> m_customerDataManager;
 
     FocusState m_focusState;
     std::mutex m_mutex;
@@ -881,6 +894,10 @@ TEST_F(AlertsTest, RemoveAllAlertsBeforeAlertIsActive) {
     FocusState state;
     state = m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged);
     ASSERT_TRUE(focusChanged);
+    ASSERT_EQ(state, FocusState::BACKGROUND);
+
+    state = m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged);
+    ASSERT_TRUE(focusChanged);
     ASSERT_EQ(state, FocusState::FOREGROUND);
 
     // SetAlertSucceeded Event is sent
@@ -946,6 +963,10 @@ TEST_F(AlertsTest, cancelAlertBeforeItIsActive) {
     // Low priority Test client gets back permission to the test channel.
     bool focusChanged = false;
     ASSERT_EQ(
+        m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged), FocusState::BACKGROUND);
+
+    focusChanged = false;
+    ASSERT_EQ(
         m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged), FocusState::FOREGROUND);
 
     // AlertStarted Event is not sent.
@@ -974,20 +995,30 @@ TEST_F(AlertsTest, RemoveStorageBeforeAlarmIsSet) {
 
     bool focusChanged = false;
     ASSERT_EQ(
+        m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged), FocusState::BACKGROUND);
+    ASSERT_TRUE(focusChanged);
+
+    ASSERT_EQ(
         m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged), FocusState::FOREGROUND);
     ASSERT_TRUE(focusChanged);
+
+    // SetAlertFailed Event is sent
+    sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
+    ASSERT_TRUE(checkSentEventName(sendParams, NAME_SET_ALERT_FAILED));
+
+    sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
+    if (checkSentEventName(sendParams, NAME_SPEECH_STARTED)) {
+        sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
+        if (checkSentEventName(sendParams, NAME_SPEECH_FINISHED)) {
+            sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
+        }
+    }
+    // DeleteAlertFailed is sent.
+    ASSERT_TRUE(checkSentEventName(sendParams, NAME_DELETE_ALERT_FAILED));
 
     ASSERT_EQ(
         m_testContentClient->waitForFocusChange(WAIT_FOR_TIMEOUT_DURATION, &focusChanged), FocusState::BACKGROUND);
     ASSERT_TRUE(focusChanged);
-
-    // SetAlertSucceeded Event is sent
-    sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
-    ASSERT_TRUE(checkSentEventName(sendParams, NAME_SET_ALERT_FAILED));
-
-    // AlertStarted Event is sent.
-    sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
-    ASSERT_TRUE(checkSentEventName(sendParams, NAME_DELETE_ALERT_FAILED));
 
     // Low priority Test client gets back permission to the test channel.
     ASSERT_EQ(
@@ -1069,7 +1100,7 @@ TEST_F(AlertsTest, UserShortUnrelatedBargeInOnActiveTimer) {
  * Set a 5 second timer and wait until it is active. Send a recognize event asking "what's up" and see that the alert
  * goes into the background. When all the speaks are complete, the alert is forgrounded and can be locally stopped.
  */
-TEST_F(AlertsTest, UserLongUnrelatedBargeInOnActiveTimer) {
+TEST_F(AlertsTest, DISABLED_UserLongUnrelatedBargeInOnActiveTimer) {
     // Write audio to SDS saying "Set a timer for 5 seconds"
     sendAudioFileAsRecognize(RECOGNIZE_TIMER_AUDIO_FILE_NAME);
     TestMessageSender::SendParams sendParams = m_avsConnectionManager->waitForNext(WAIT_FOR_TIMEOUT_DURATION);
@@ -1290,7 +1321,7 @@ TEST_F(AlertsTest, handleOneTimerWithVocalStop) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     if (argc < 3) {
-        std::cerr << "USAGE: AlertsIntegration <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder>"
+        std::cerr << "USAGE: " << std::string(argv[0]) << " <path_to_AlexaClientSDKConfig.json> <path_to_inputs_folder>"
                   << std::endl;
         return 1;
 
