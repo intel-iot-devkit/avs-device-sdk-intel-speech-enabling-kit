@@ -50,10 +50,10 @@ public:
         capabilityAgents::aip::AudioProvider holdToTalkAudioProvider,
         capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
         capabilityAgents::aip::AudioProvider wakeWordAudioProvider = capabilityAgents::aip::AudioProvider::null(),
-        std::shared_ptr<sampleApp::KeywordObserver> keywordObserver = nullptr,
         std::shared_ptr<esp::ESPDataProviderInterface> espProvider = nullptr,
-        std::shared_ptr<esp::ESPDataModifierInterface> espModifier = nullptr);
-        bool startPaStream = true);
+        std::shared_ptr<esp::ESPDataModifierInterface> espModifier = nullptr,
+		        bool const startPaStream = true);
+
 
     /**
      * Begins the interaction between the Sample App and the user. This should only be called at startup.

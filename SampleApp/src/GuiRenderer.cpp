@@ -60,6 +60,10 @@ static const std::string RENDER_PLAYER_INFO_HEADER =
     "#     RenderPlayerInfoCard                                                    \n"
     "#-----------------------------------------------------------------------------\n";
 
+static const std::string RENDER_PLAYER_INFO_CLEARED =
+    "##############################################################################\n"
+    "#     RenderPlayerInfoCard - Cleared                                          \n"
+    "##############################################################################\n";
 
 void GuiRenderer::sendDisplayServer(const std::string& jsonPayload) {
 #ifdef SOCKETIO_DISPLAY_SERVER
@@ -84,7 +88,7 @@ void GuiRenderer::sendDisplayServer(const std::string& jsonPayload) {
 }
 
 
-void GuiRenderer::renderTemplateCard(const std::string& jsonPayload) {
+void GuiRenderer::renderTemplateCard(const std::string& jsonPayload, avsCommon::avs::FocusState focusState) {
     rapidjson::Document payload;
     rapidjson::ParseResult result = payload.Parse(jsonPayload);
     if (!result) {
@@ -151,6 +155,7 @@ void GuiRenderer::renderPlayerInfoCard(
     buffer += jsonPayload + "\n";
     buffer += RENDER_FOOTER;
     ConsolePrinter::simplePrint(buffer);
+    sendDisplayServer(jsonPayload);
 }
 
 void GuiRenderer::clearPlayerInfoCard() {

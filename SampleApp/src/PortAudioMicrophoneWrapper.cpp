@@ -33,10 +33,6 @@ static const double SAMPLE_RATE = 16000;
 static const char* DEVICE_NAME = "s1000";
 static const unsigned long PREFERRED_SAMPLES_PER_CALLBACK = paFramesPerBufferUnspecified;
 
-static const std::string SAMPLE_APP_CONFIG_ROOT_KEY("sampleApp");
-static const std::string PORTAUDIO_CONFIG_ROOT_KEY("portAudio");
-static const std::string PORTAUDIO_CONFIG_SUGGESTED_LATENCY_KEY("suggestedLatency");
-
 /**
  * Simple helper method for printing a message using the @c ConsolePrinter with
  * printing a PortAudio error.
@@ -49,6 +45,10 @@ void printPaError(PaError err, std::string msg) {
     os << msg << " : [" << err << "] " << Pa_GetErrorText(err);
     ConsolePrinter::simplePrint(os.str());
 }
+
+static const std::string SAMPLE_APP_CONFIG_ROOT_KEY("sampleApp");
+static const std::string PORTAUDIO_CONFIG_ROOT_KEY("portAudio");
+static const std::string PORTAUDIO_CONFIG_SUGGESTED_LATENCY_KEY("suggestedLatency");
 
 std::unique_ptr<PortAudioMicrophoneWrapper> PortAudioMicrophoneWrapper::create(
     std::shared_ptr<avsCommon::avs::AudioInputStream::Buffer> buffer,
@@ -113,7 +113,7 @@ bool PortAudioMicrophoneWrapper::openStream() {
     const   PaDeviceInfo *deviceInfo;
 
     if (err != paNoError) {
-        printPaError(err, "Failed to initialize PortAudio");
+        ConsolePrinter::simplePrint("Failed to initialize PortAudio");
         return false;
     }
 
@@ -146,15 +146,6 @@ bool PortAudioMicrophoneWrapper::openStream() {
     inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency ;
     inputParameters.hostApiSpecificStreamInfo = NULL;
     err = Pa_OpenStream(
-    PaStreamParameters inputParameters;
-    bzero( &inputParameters, sizeof( inputParameters ) );
-    inputParameters.channelCount = NUM_INPUT_CHANNELS;
-    inputParameters.device = devId;
-    inputParameters.hostApiSpecificStreamInfo = NULL;
-    inputParameters.sampleFormat = paInt16;
-    inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency ;
-    inputParameters.hostApiSpecificStreamInfo = NULL;
-    err = Pa_OpenStream(
                     &m_paStream,
                     &inputParameters,
                     NULL,
@@ -165,7 +156,7 @@ bool PortAudioMicrophoneWrapper::openStream() {
                     (void *)this );
 
     if (err != paNoError) {
-        printPaError(err, "Failed to open PortAudio default stream");
+        ConsolePrinter::simplePrint("Failed to open PortAudio default stream");
         return false;
     }
     return true;
@@ -180,7 +171,7 @@ bool PortAudioMicrophoneWrapper::startStreamingMicrophoneData() {
 #endif
     PaError err = Pa_StartStream(m_paStream);
     if (err != paNoError) {
-        printPaError(err, "Failed to start PortAudio stream");
+        ConsolePrinter::simplePrint("Failed to start PortAudio stream");
         return false;
     }
     m_streaming = true;
@@ -193,7 +184,7 @@ bool PortAudioMicrophoneWrapper::stopStreamingMicrophoneData() {
         return true;
     PaError err = Pa_StopStream(m_paStream);
     if (err != paNoError) {
-        printPaError(err, "Failed to stop PortAudio stream");
+        ConsolePrinter::simplePrint("Failed to stop PortAudio stream");
         return false;
     }
     m_streaming = false;
@@ -235,6 +226,11 @@ bool PortAudioMicrophoneWrapper::getConfigSuggestedLatency(PaTime& suggestedLate
 
     return latencyInConfig;
 }
+
+bool PortAudioMicrophoneWrapper::isStreaming() {
+    return m_streaming;
+}
+
 
 }  // namespace sampleApp
 }  // namespace alexaClientSDK
