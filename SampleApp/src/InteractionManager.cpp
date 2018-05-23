@@ -28,7 +28,8 @@ InteractionManager::InteractionManager(
     capabilityAgents::aip::AudioProvider tapToTalkAudioProvider,
     capabilityAgents::aip::AudioProvider wakeWordAudioProvider,
     std::shared_ptr<esp::ESPDataProviderInterface> espProvider,
-    std::shared_ptr<esp::ESPDataModifierInterface> espModifier) :
+    std::shared_ptr<esp::ESPDataModifierInterface> espModifier,
+        bool startPaStream) :
 	    RequiresShutdown{"InteractionManager"},
         m_client{client},
         m_micWrapper{micWrapper},
@@ -45,8 +46,7 @@ InteractionManager::InteractionManager(
     if(startPaStream) {
         m_micWrapper->startStreamingMicrophoneData();
     }
-
-};
+}
 
 void InteractionManager::begin() {
     m_executor.submit([this]() {

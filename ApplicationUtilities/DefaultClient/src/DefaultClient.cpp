@@ -669,24 +669,24 @@ void DefaultClient::removeSettingObserver(
     m_settings->removeSingleSettingObserver(key, observer);
 }
 
-void DefaultClient::addAudioInputProcessorObserver(
-        std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer) {
-    m_audioInputProcessor->addObserver(observer);
-}
-
 void DefaultClient::addNotificationsObserver(
     std::shared_ptr<avsCommon::sdkInterfaces::NotificationsObserverInterface> observer) {
     m_notificationsCapabilityAgent->addObserver(observer);
 }
 
-void DefaultClient::removeAudioInputProcessorObserver(
-        std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer) {
-    m_audioInputProcessor->removeObserver(observer);
-}
-
 void DefaultClient::removeNotificationsObserver(
     std::shared_ptr<avsCommon::sdkInterfaces::NotificationsObserverInterface> observer) {
     m_notificationsCapabilityAgent->removeObserver(observer);
+}
+
+void DefaultClient::addAudioInputProcessorObserver(
+        std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer) {
+    m_audioInputProcessor->addObserver(observer);
+}
+
+void DefaultClient::removeAudioInputProcessorObserver(
+        std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer) {
+    m_audioInputProcessor->removeObserver(observer);
 }
 
 void DefaultClient::changeSetting(const std::string& key, const std::string& value) {

@@ -1,12 +1,12 @@
 set(SampleApp_SOURCES)
 list(APPEND SampleApp_SOURCES 
     ConnectionObserver.cpp
-    PortAudioObserver.cpp
     ConsolePrinter.cpp
     GuiRenderer.cpp
     InteractionManager.cpp
     KeywordObserver.cpp
     PortAudioMicrophoneWrapper.cpp
+    PortAudioObserver.cpp
     UIManager.cpp
     UserInputManager.cpp
     SampleApplication.cpp

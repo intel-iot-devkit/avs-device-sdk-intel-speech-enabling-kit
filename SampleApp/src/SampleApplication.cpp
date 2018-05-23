@@ -139,6 +139,16 @@ static alexaClientSDK::avsCommon::utils::logger::Level getLogLevelFromUserInput(
 }
 
 /**
+ * The interface used to display messages in the console.
+ *
+ * TODO: g_consolePrinter is a static/global because it is passed by reference to changeSinkLogger() below,
+ * which keeps a reference to it for the lifetime of the logging system.  If the logging system is refactoroed to
+ * use shared_ptrs (ACSDK-445), the ConsolePrinter can be instantiated as shared_ptr class member and passed to
+ * LoggerSinkManager.
+ *private:
+
+ */
+static alexaClientSDK::sampleApp::ConsolePrinter g_consolePrinter;
 /**
  * Allows the process to ignore the SIGPIPE signal.
  * The SIGPIPE signal may be received when the application performs a write to a closed socket.
@@ -153,19 +163,6 @@ static bool ignoreSigpipeSignals() {
     }
 #endif
     return true;
-
-/*
- * The interface used to display messages in the console.
- *
- * TODO: g_consolePrinter is a static/global because it is passed by reference to changeSinkLogger() below,
- * which keeps a reference to it for the lifetime of the logging system.  If the logging system is refactoroed to
- * use shared_ptrs (ACSDK-445), the ConsolePrinter can be instantiated as shared_ptr class member and passed to
- * LoggerSinkManager.
- *private:
-
- */
-static alexaClientSDK::sampleApp::ConsolePrinter g_consolePrinter;
-
 }
 
 std::unique_ptr<SampleApplication> SampleApplication::create(
@@ -671,7 +668,8 @@ bool SampleApplication::initialize(
         tapToTalkAudioProvider,
         wakeWordAudioProvider,
         espProvider,
-        espModifier);
+        espModifier,
+		startPaStream);
 
 #else
     // If wake word is not enabled, then creating the interaction manager without a wake word audio provider.

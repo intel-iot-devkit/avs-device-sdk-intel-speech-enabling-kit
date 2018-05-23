@@ -1,1 +1,1 @@
-# avs-device-sdk-intel-speech-enabling-kit
+avs-device-sdk-intel-speech-enabling-kit

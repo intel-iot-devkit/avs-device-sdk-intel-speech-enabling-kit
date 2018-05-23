@@ -262,6 +262,20 @@ public:
         std::shared_ptr<avsCommon::sdkInterfaces::SingleSettingObserverInterface> observer);
 
     /**
+     * Adds an observer to be notified of IndicatorState changes.
+     *
+     * @param observer The observer to add.
+     */
+    void addNotificationsObserver(std::shared_ptr<avsCommon::sdkInterfaces::NotificationsObserverInterface> observer);
+
+    /**
+     * Removes an observer to be notified of IndicatorState changes.
+     *
+     * @param observer The observer to remove.
+     */
+    void removeNotificationsObserver(
+        std::shared_ptr<avsCommon::sdkInterfaces::NotificationsObserverInterface> observer);
+    /**
      * Adds an observer to an audio input processor to be notified on state changes.
      *
      * @param observer The audio input processor observer to be added.
@@ -276,22 +290,6 @@ public:
      */
     void removeAudioInputProcessorObserver(
             std::shared_ptr<avsCommon::sdkInterfaces::AudioInputProcessorObserverInterface> observer);
-
-    /**
-     * Adds an observer to be notified of IndicatorState changes.
-     *
-     * @param observer The observer to add.
-     */
-    void addNotificationsObserver(std::shared_ptr<avsCommon::sdkInterfaces::NotificationsObserverInterface> observer);
-
-    /**
-     * Removes an observer to be notified of IndicatorState changes.
-     *
-     * @param observer The observer to remove.
-     */
-    void removeNotificationsObserver(
-        std::shared_ptr<avsCommon::sdkInterfaces::NotificationsObserverInterface> observer);
-
     /**
      * Calls the changeSetting function of Settings object.
      *
